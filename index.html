@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>サムライこゆき — α版</title>
+    <style>
+      :root { color-scheme: dark; }
+      body { font-family: system-ui, sans-serif; background: #1a1614; color: #e8e0d5; margin: 0; padding: 16px; }
+      h1 { font-size: 18px; margin: 0 0 8px; }
+      .status { color: #d9a441; margin-bottom: 12px; }
+      .enemies { display: flex; gap: 12px; margin-bottom: 16px; }
+      .enemy { background: #2a2320; border: 1px solid #443a33; border-radius: 8px; padding: 10px; min-width: 140px; }
+      .enemy.dead { opacity: 0.35; }
+      .enemy-name { font-weight: bold; }
+      .enemy-hp { font-size: 13px; color: #c0b6a8; }
+      .bar { height: 6px; background: #443a33; border-radius: 3px; overflow: hidden; margin: 4px 0; }
+      .bar span { display: block; height: 100%; background: #b5483f; }
+      .intent { font-size: 12px; color: #d9a441; }
+      .koyuki { background: #221d1a; border-radius: 8px; padding: 10px; margin-bottom: 12px; }
+      .sword { font-size: 13px; color: #9fc0a0; margin-top: 4px; }
+      .hand { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+      .card { background: #33291f; border: 1px solid #6b5a45; color: #f0e6d8; border-radius: 8px; padding: 10px 14px; cursor: pointer; min-width: 70px; }
+      .card.disabled { opacity: 0.4; cursor: not-allowed; }
+      .card-name { font-weight: bold; }
+      .card-ap { font-size: 12px; color: #c0b6a8; }
+      .controls { display: flex; gap: 8px; margin-bottom: 12px; }
+      .controls button { padding: 8px 16px; border-radius: 6px; border: 1px solid #6b5a45; background: #3a2f24; color: #f0e6d8; cursor: pointer; }
+      .controls button:disabled { opacity: 0.4; cursor: not-allowed; }
+      .log { background: #15110f; border-radius: 8px; padding: 10px; font-size: 13px; line-height: 1.6; white-space: pre-wrap; max-height: 260px; overflow:auto; }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/app/main.ts"></script>
+  </body>
+</html>

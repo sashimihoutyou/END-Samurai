@@ -1,0 +1,38 @@
+[
+  {
+    "id": "kiru",
+    "name": "斬る",
+    "category": "skill",
+    "ap": 2,
+    "target": "single",
+    "flavorKey": "card.kiru.flavor",
+    "effects": [{ "kind": "attack", "multiplier": 1.0 }]
+  },
+  {
+    "id": "tsuku",
+    "name": "突く",
+    "category": "skill",
+    "ap": 1,
+    "target": "single",
+    "flavorKey": "card.tsuku.flavor",
+    "effects": [{ "kind": "attack", "multiplier": 0.6 }]
+  },
+  {
+    "id": "ukeru",
+    "name": "受ける",
+    "category": "skill",
+    "ap": 1,
+    "target": "self",
+    "flavorKey": "card.ukeru.flavor",
+    "effects": [{ "kind": "block", "amount": 3 }]
+  },
+  {
+    "id": "mikiru",
+    "name": "見切る",
+    "category": "skill",
+    "ap": 2,
+    "target": "self",
+    "flavorKey": "card.mikiru.flavor",
+    "effects": [{ "kind": "dodge_next" }]
+  }
+]

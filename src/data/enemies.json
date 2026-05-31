@@ -1,0 +1,24 @@
+[
+  {
+    "id": "nora_inu",
+    "name": "野犬",
+    "archetype": "cyclic",
+    "hp": 12,
+    "defense": 0,
+    "charmTarget": false,
+    "intents": [
+      {
+        "id": "kamitsuki",
+        "label": "噛みつき",
+        "icon": "bite",
+        "effects": [{ "kind": "damage", "amount": 4 }]
+      },
+      {
+        "id": "unaru",
+        "label": "うなる",
+        "icon": "growl",
+        "effects": [{ "kind": "damage", "amount": 2 }]
+      }
+    ]
+  }
+]

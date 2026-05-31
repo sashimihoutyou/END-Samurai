@@ -1,0 +1,35 @@
+[
+  {
+    "part": "blade",
+    "baseStageId": "shinpin",
+    "stages": [
+      { "id": "namakura", "name": "なまくら", "order": 0, "mods": { "attack": -3 } },
+      { "id": "kireaji_teika", "name": "切れ味低下", "order": 1, "mods": { "attack": -1 } },
+      { "id": "shinpin", "name": "新品同様", "order": 2, "mods": { "attack": 0, "ap": 0 } },
+      { "id": "kireaji_ryoko", "name": "切れ味良好", "order": 3, "mods": { "attack": 1 } },
+      { "id": "abura_hajiki", "name": "脂弾き", "order": 4, "mods": { "attack": 2, "ap": -1 } }
+    ]
+  },
+  {
+    "part": "tsuba",
+    "baseStageId": "shinpin",
+    "stages": [
+      { "id": "tsuba_nashi", "name": "鍔なし", "order": 0, "mods": { "baseDefense": -3, "debuffNullifyRate": 0 } },
+      { "id": "hibiware", "name": "ひび割れ", "order": 1, "mods": { "baseDefense": -1, "debuffNullifyRate": 0.05 } },
+      { "id": "shinpin", "name": "新品同様", "order": 2, "mods": { "baseDefense": 0, "debuffNullifyRate": 0.1 } },
+      { "id": "ganjo", "name": "頑丈", "order": 3, "mods": { "baseDefense": 1, "debuffNullifyRate": 0.2 } },
+      { "id": "kohheki", "name": "鋼壁", "order": 4, "mods": { "baseDefense": 2, "debuffNullifyRate": 0.3 } }
+    ]
+  },
+  {
+    "part": "tsuka",
+    "baseStageId": "shinpin",
+    "stages": [
+      { "id": "nigiri_warui", "name": "握りが悪い", "order": 0, "mods": { "ap": 1, "comboRate": 0 } },
+      { "id": "yurumi", "name": "緩み", "order": 1, "mods": { "comboRate": 0.05 } },
+      { "id": "shinpin", "name": "新品同様", "order": 2, "mods": { "comboRate": 0.1 } },
+      { "id": "tenajimi", "name": "手に馴染む", "order": 3, "mods": { "comboRate": 0.15 } },
+      { "id": "ittaika", "name": "一体化", "order": 4, "mods": { "ap": -1, "comboRate": 0.2 } }
+    ]
+  }
+]
