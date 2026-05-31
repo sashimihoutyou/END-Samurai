@@ -1,0 +1,50 @@
+name: Deploy α to GitHub Pages
+
+# Vite でビルドした dist/ を GitHub Pages へデプロイする。
+# GitHub Pages はソースをそのまま配るだけで TypeScript を実行できないため、
+# ビルド成果物（プレーンJS）をデプロイする必要がある。
+#
+# 【利用前に必要な設定】リポジトリ Settings → Pages → Build and deployment →
+#   Source を「GitHub Actions」に変更すること（一度だけ）。
+
+on:
+  push:
+    branches:
+      - main
+      - claude/hopeful-cray-zGd2s
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同時デプロイを1本に絞る
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

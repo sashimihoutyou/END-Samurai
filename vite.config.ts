@@ -4,6 +4,9 @@ import { defineConfig } from "vitest/config";
 // ロジックは src/core（エンジン非依存）に閉じ込め、本ファイルはUI/配信のみを担う。
 export default defineConfig({
   root: ".",
+  // 相対パスで配信する。GitHub Pages のプロジェクトページ（/END-Samurai/ 配下）でも
+  // 資産パスがずれないようにするため "./" を指定。
+  base: "./",
   build: {
     target: "es2022",
     outDir: "dist",
