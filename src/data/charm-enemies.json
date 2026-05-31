@@ -2,8 +2,9 @@
   {
     "id": "otoyo",
     "name": "お豊",
-    "qi": 22,
-    "qiDefense": 1,
+    "qi": 30,
+    "gaman": 8,
+    "qiDefense": 2,
     "joinCompanionId": "otoyo",
     "weakness": {
       "kuchizuke": 3,
@@ -19,13 +20,13 @@
         "id": "momiji_awase",
         "label": "紅葉合わせ",
         "icon": "tease",
-        "effects": [{ "kind": "damage", "amount": 2 }]
+        "effects": [{ "kind": "gaman_attack", "amount": 5 }]
       },
       {
-        "id": "zecchou",
-        "label": "絶頂（行動パス）",
-        "icon": "climax",
-        "effects": [{ "kind": "self_climax", "qi": 3 }]
+        "id": "tewamakura",
+        "label": "手枕",
+        "icon": "tease",
+        "effects": [{ "kind": "gaman_attack", "amount": 4 }]
       }
     ]
   }
