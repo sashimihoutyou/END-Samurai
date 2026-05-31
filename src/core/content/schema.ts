@@ -86,12 +86,86 @@ export const enemyDefSchema = z.object({
   isBoss: z.boolean().optional(),
 });
 
+// ── 魅了バトル（docs/02・08 §2.6）──────────────────────────────
+
+const sexAttr = z.enum([
+  "kuchizuke",
+  "hogushi",
+  "chichikuri",
+  "seikou",
+  "ushirodori",
+  "matagari",
+  "uradori",
+]);
+
+const sexEffectSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("qi_damage") }),
+  z.object({ kind: z.literal("qi_defense_down"), amount: z.number().int() }),
+  z.object({ kind: z.literal("heal_from_damage"), ratio: z.number().positive().max(1) }),
+  z.object({ kind: z.literal("atk_debuff"), amount: z.number().int() }),
+  z.object({ kind: z.literal("double_defense_ref") }),
+  z.object({ kind: z.literal("all_stats_down"), amount: z.number().int() }),
+  z.object({ kind: z.literal("guard_up"), amount: z.number().int() }),
+  z.object({ kind: z.literal("guard_down"), amount: z.number().int() }),
+]);
+
+export const sexCardDefSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  attrs: z.array(sexAttr).nonempty(),
+  ap: z.number().int().nonnegative(),
+  baseQi: z.number().int().nonnegative(),
+  target: z.enum(["single", "all"]),
+  effects: z.array(sexEffectSchema),
+  developable: z.boolean(),
+  flavorKey: z.string().optional(),
+});
+
+const weaknessSchema = z.object({
+  kuchizuke: z.number().int().min(0).max(3),
+  hogushi: z.number().int().min(0).max(3),
+  chichikuri: z.number().int().min(0).max(3),
+  seikou: z.number().int().min(0).max(3),
+  ushirodori: z.number().int().min(0).max(3),
+  matagari: z.number().int().min(0).max(3),
+  uradori: z.number().int().min(0).max(3),
+});
+
+const charmEnemyEffectSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("damage"), amount: z.number().int() }),
+  z.object({ kind: z.literal("apply_status"), status: z.string(), x: z.number().int() }),
+  z.object({ kind: z.literal("self_climax"), qi: z.number().int().positive() }),
+]);
+
+const charmIntentSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  icon: z.string(),
+  effects: z.array(charmEnemyEffectSchema),
+});
+
+export const charmEnemyDefSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  qi: z.number().int().positive(),
+  qiDefense: z.number().int().nonnegative(),
+  weakness: weaknessSchema,
+  intents: z.array(charmIntentSchema).nonempty(),
+  joinCompanionId: z.string().optional(),
+});
+
+export const textSchema = z.record(z.union([z.string(), z.array(z.string())]));
+
 export const contentSchema = z.object({
   combat: combatConfigSchema,
   swordStages: z.array(swordPartStagesSchema).length(3),
   cards: z.array(cardDefSchema).nonempty(),
   enemies: z.array(enemyDefSchema).nonempty(),
+  sexCards: z.array(sexCardDefSchema).nonempty(),
+  charmEnemies: z.array(charmEnemyDefSchema).nonempty(),
+  text: textSchema,
 });
 
 export type CombatConfig = z.infer<typeof combatConfigSchema>;
 export type Content = z.infer<typeof contentSchema>;
+export type TextData = z.infer<typeof textSchema>;
