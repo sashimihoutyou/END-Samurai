@@ -1,0 +1,7 @@
+{
+  "baseAp": 4,
+  "baseMaxHp": 30,
+  "baseBladeAttack": 6,
+  "baseTsubaDefense": 3,
+  "handLimit": 5
+}

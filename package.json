@@ -1,0 +1,22 @@
+{
+  "name": "end-samurai",
+  "version": "0.0.1-alpha",
+  "private": true,
+  "type": "module",
+  "description": "サムライこゆき、ゾンビを斬る！ — α版（ブラウザ先行プロトタイプ）",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10",
+    "vitest": "^2.1.5"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  }
+}
