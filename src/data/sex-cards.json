@@ -1,0 +1,94 @@
+[
+  {
+    "id": "kuchi_o_ubau",
+    "name": "口を奪う！",
+    "attrs": ["kuchizuke"],
+    "ap": 1,
+    "baseQi": 2,
+    "target": "single",
+    "developable": true,
+    "flavorKey": "sexcard.kuchi_o_ubau.flavor",
+    "effects": [{ "kind": "qi_damage" }, { "kind": "atk_debuff", "amount": 1 }]
+  },
+  {
+    "id": "chichi_o_suu",
+    "name": "乳を吸う！",
+    "attrs": ["chichikuri"],
+    "ap": 2,
+    "baseQi": 4,
+    "target": "single",
+    "developable": true,
+    "flavorKey": "sexcard.chichi_o_suu.flavor",
+    "effects": [{ "kind": "qi_damage" }, { "kind": "heal_from_damage", "ratio": 0.4 }]
+  },
+  {
+    "id": "yubi_de_hogusu",
+    "name": "指でほぐす！",
+    "attrs": ["hogushi"],
+    "ap": 1,
+    "baseQi": 3,
+    "target": "single",
+    "developable": true,
+    "flavorKey": "sexcard.yubi_de_hogusu.flavor",
+    "effects": [{ "kind": "qi_damage" }, { "kind": "qi_defense_down", "amount": 1 }]
+  },
+  {
+    "id": "mune_o_momishidaku",
+    "name": "胸を揉みしだく！",
+    "attrs": ["chichikuri"],
+    "ap": 1,
+    "baseQi": 3,
+    "target": "single",
+    "developable": true,
+    "flavorKey": "sexcard.mune_o_momishidaku.flavor",
+    "effects": [{ "kind": "qi_damage" }]
+  },
+  {
+    "id": "koshi_o_furu",
+    "name": "腰を振る！",
+    "attrs": ["seikou"],
+    "ap": 2,
+    "baseQi": 6,
+    "target": "single",
+    "developable": true,
+    "flavorKey": "sexcard.koshi_o_furu.flavor",
+    "effects": [{ "kind": "qi_damage" }]
+  },
+  {
+    "id": "ushiro_kara_semeru",
+    "name": "後ろから攻める！",
+    "attrs": ["ushirodori"],
+    "ap": 2,
+    "baseQi": 9,
+    "target": "single",
+    "developable": true,
+    "flavorKey": "sexcard.ushiro_kara_semeru.flavor",
+    "effects": [{ "kind": "qi_damage" }, { "kind": "guard_down", "amount": 2 }]
+  },
+  {
+    "id": "ue_de_ugoku",
+    "name": "上で動く！",
+    "attrs": ["matagari"],
+    "ap": 3,
+    "baseQi": 6,
+    "target": "single",
+    "developable": true,
+    "flavorKey": "sexcard.ue_de_ugoku.flavor",
+    "effects": [{ "kind": "qi_damage" }, { "kind": "guard_up", "amount": 3 }]
+  },
+  {
+    "id": "koumon_o_semeru",
+    "name": "後門を責める！",
+    "attrs": ["uradori"],
+    "ap": 2,
+    "baseQi": 9,
+    "target": "single",
+    "developable": true,
+    "flavorKey": "sexcard.koumon_o_semeru.flavor",
+    "effects": [
+      { "kind": "qi_damage" },
+      { "kind": "double_defense_ref" },
+      { "kind": "all_stats_down", "amount": 1 }
+    ]
+  }
+]

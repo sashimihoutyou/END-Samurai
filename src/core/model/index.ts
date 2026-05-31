@@ -3,3 +3,24 @@ export type { SwordPart, SwordState, SwordStage, SwordPartStages, SwordStageMods
 export type { CardDef, CardInstance, CardCategory, CardEffect, CardRequirement, TargetType } from "./card.js";
 export type { EnemyDef, EnemyInstance, EnemyArchetype, EnemyEffect, IntentDef } from "./enemy.js";
 export type { BattleState, BattleEvent, BattlePhase, BonusPools } from "./battle-state.js";
+export type {
+  SexAttr,
+  SexEffect,
+  SexCardDef,
+  CharmEnemyEffect,
+  CharmIntentDef,
+  CharmEnemyDef,
+  CharmEnemyInstance,
+  CharmStatusInstance,
+  SextechState,
+  CharmPhase,
+  CharmBattleState,
+  CharmEvent,
+} from "./charm.js";
+export {
+  WEAKNESS_MULTIPLIERS,
+  WEAKNESS_MAX_STAGE,
+  DEVELOP_HITS_PER_STAGE,
+  weaknessMultiplier,
+} from "./charm.js";
+export type { RunState, RunCompanion, Affection } from "./run-state.js";

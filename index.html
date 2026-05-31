@@ -3,31 +3,56 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>サムライこゆき — α版</title>
+    <title>サムライこゆき、ゾンビを斬る！ — α版</title>
     <style>
       :root { color-scheme: dark; }
       body { font-family: system-ui, sans-serif; background: #1a1614; color: #e8e0d5; margin: 0; padding: 16px; }
+      #app { max-width: 760px; margin: 0 auto; }
       h1 { font-size: 18px; margin: 0 0 8px; }
       .status { color: #d9a441; margin-bottom: 12px; }
-      .enemies { display: flex; gap: 12px; margin-bottom: 16px; }
-      .enemy { background: #2a2320; border: 1px solid #443a33; border-radius: 8px; padding: 10px; min-width: 140px; }
+      .hint { color: #8c9a8c; font-size: 12px; }
+      .flavor { color: #c8bca8; font-style: italic; margin: 0 0 12px; line-height: 1.6; }
+      .flavor.pink, .pink { color: #e6a6c0; }
+      .enemies { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+      .enemy { background: #2a2320; border: 1px solid #443a33; border-radius: 8px; padding: 10px; min-width: 160px; }
       .enemy.dead { opacity: 0.35; }
       .enemy-name { font-weight: bold; }
       .enemy-hp { font-size: 13px; color: #c0b6a8; }
       .bar { height: 6px; background: #443a33; border-radius: 3px; overflow: hidden; margin: 4px 0; }
       .bar span { display: block; height: 100%; background: #b5483f; }
+      .bar.charm span { background: #d46a9a; }
       .intent { font-size: 12px; color: #d9a441; }
       .koyuki { background: #221d1a; border-radius: 8px; padding: 10px; margin-bottom: 12px; }
+      .koyuki.charm { border: 1px solid #5a3a4a; }
       .sword { font-size: 13px; color: #9fc0a0; margin-top: 4px; }
+      .sextech-alloc { background: #2a2030; border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; font-size: 13px; }
+      .sextech-alloc button { margin-left: 6px; padding: 4px 10px; border-radius: 6px; border: 1px solid #6b4a5a; background: #3a2a34; color: #f0e6d8; cursor: pointer; }
       .hand { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
       .card { background: #33291f; border: 1px solid #6b5a45; color: #f0e6d8; border-radius: 8px; padding: 10px 14px; cursor: pointer; min-width: 70px; }
+      .card.sex { background: #3a2630; border-color: #7a4a60; }
       .card.disabled { opacity: 0.4; cursor: not-allowed; }
       .card-name { font-weight: bold; }
       .card-ap { font-size: 12px; color: #c0b6a8; }
-      .controls { display: flex; gap: 8px; margin-bottom: 12px; }
+      .controls { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
       .controls button { padding: 8px 16px; border-radius: 6px; border: 1px solid #6b5a45; background: #3a2f24; color: #f0e6d8; cursor: pointer; }
       .controls button:disabled { opacity: 0.4; cursor: not-allowed; }
+      .todome { border-color: #7a4a60; }
+      .todome.ready { background: #b5407a; border-color: #e07aa8; color: #fff; font-weight: bold; }
       .log { background: #15110f; border-radius: 8px; padding: 10px; font-size: 13px; line-height: 1.6; white-space: pre-wrap; max-height: 260px; overflow:auto; }
+
+      /* テキスト送り・タイトル等の画面 */
+      .screen { padding: 24px 8px; }
+      .title-screen { text-align: center; padding-top: 48px; }
+      .title-main { font-size: 26px; color: #e8d8a8; letter-spacing: 2px; }
+      .title-sub { color: #c8bca8; margin-bottom: 32px; }
+      .title-note { color: #6f655a; font-size: 12px; margin-top: 24px; }
+      .narration-screen .narration { font-size: 16px; line-height: 2; min-height: 96px; }
+      .result-head { color: #d9a441; font-size: 18px; }
+      .result-stat { color: #9fc0a0; }
+      .gameover { color: #b5483f; font-size: 24px; }
+      .dots { color: #6f655a; letter-spacing: 4px; margin: 8px 0 16px; }
+      .bigbtn { padding: 12px 28px; font-size: 15px; border-radius: 8px; border: 1px solid #6b5a45; background: #3a2f24; color: #f0e6d8; cursor: pointer; }
+      .bigbtn.pink { background: #b5407a; border-color: #e07aa8; color: #fff; }
     </style>
   </head>
   <body>
