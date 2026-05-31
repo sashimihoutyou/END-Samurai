@@ -223,7 +223,8 @@ export class Game {
 
   charmTodome(): void {
     if (!this.charm) return;
-    // 1タップ目は確認、2タップ目で実行（フィニッシャー成立時はノーコストだが確認を挟む）。
+    if (!this.charmIsTodomeReady()) return; // とどめは相手が放心（気力0）のときのみ
+    // 1タップ目は確認、2タップ目で実行。
     if (!this.charmTodomeArmed) {
       this.charmTodomeArmed = true;
       this.render();

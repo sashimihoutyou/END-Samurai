@@ -104,9 +104,10 @@ const sexEffectSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("heal_from_damage"), ratio: z.number().positive().max(1) }),
   z.object({ kind: z.literal("atk_debuff"), amount: z.number().int() }),
   z.object({ kind: z.literal("double_defense_ref") }),
-  z.object({ kind: z.literal("all_stats_down"), amount: z.number().int() }),
+  z.object({ kind: z.literal("weaken_attr"), amount: z.number().int().positive() }),
   z.object({ kind: z.literal("guard_up"), amount: z.number().int() }),
   z.object({ kind: z.literal("guard_down"), amount: z.number().int() }),
+  z.object({ kind: z.literal("targeted_finish"), gamanToEnemy: z.number().int().nonnegative() }),
 ]);
 
 export const sexCardDefSchema = z.object({
@@ -117,7 +118,6 @@ export const sexCardDefSchema = z.object({
   baseQi: z.number().int().nonnegative(),
   target: z.enum(["single", "all"]),
   effects: z.array(sexEffectSchema),
-  developable: z.boolean(),
   flavorKey: z.string().optional(),
 });
 
@@ -132,9 +132,8 @@ const weaknessSchema = z.object({
 });
 
 const charmEnemyEffectSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("damage"), amount: z.number().int() }),
+  z.object({ kind: z.literal("gaman_attack"), amount: z.number().int().positive() }),
   z.object({ kind: z.literal("apply_status"), status: z.string(), x: z.number().int() }),
-  z.object({ kind: z.literal("self_climax"), qi: z.number().int().positive() }),
 ]);
 
 const charmIntentSchema = z.object({
@@ -148,6 +147,7 @@ export const charmEnemyDefSchema = z.object({
   id: z.string(),
   name: z.string(),
   qi: z.number().int().positive(),
+  gaman: z.number().int().positive(),
   qiDefense: z.number().int().nonnegative(),
   weakness: weaknessSchema,
   intents: z.array(charmIntentSchema).nonempty(),

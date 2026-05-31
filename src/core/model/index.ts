@@ -20,7 +20,6 @@ export type {
 export {
   WEAKNESS_MULTIPLIERS,
   WEAKNESS_MAX_STAGE,
-  DEVELOP_HITS_PER_STAGE,
   weaknessMultiplier,
 } from "./charm.js";
 export type { RunState, RunCompanion, Affection } from "./run-state.js";

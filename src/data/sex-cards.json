@@ -6,7 +6,6 @@
     "ap": 1,
     "baseQi": 2,
     "target": "single",
-    "developable": true,
     "flavorKey": "sexcard.kuchi_o_ubau.flavor",
     "effects": [{ "kind": "qi_damage" }, { "kind": "atk_debuff", "amount": 1 }]
   },
@@ -17,9 +16,8 @@
     "ap": 2,
     "baseQi": 4,
     "target": "single",
-    "developable": true,
     "flavorKey": "sexcard.chichi_o_suu.flavor",
-    "effects": [{ "kind": "qi_damage" }, { "kind": "heal_from_damage", "ratio": 0.4 }]
+    "effects": [{ "kind": "qi_damage" }, { "kind": "heal_from_damage", "ratio": 0.5 }]
   },
   {
     "id": "yubi_de_hogusu",
@@ -28,7 +26,6 @@
     "ap": 1,
     "baseQi": 3,
     "target": "single",
-    "developable": true,
     "flavorKey": "sexcard.yubi_de_hogusu.flavor",
     "effects": [{ "kind": "qi_damage" }, { "kind": "qi_defense_down", "amount": 1 }]
   },
@@ -39,7 +36,6 @@
     "ap": 1,
     "baseQi": 3,
     "target": "single",
-    "developable": true,
     "flavorKey": "sexcard.mune_o_momishidaku.flavor",
     "effects": [{ "kind": "qi_damage" }]
   },
@@ -50,7 +46,6 @@
     "ap": 2,
     "baseQi": 6,
     "target": "single",
-    "developable": true,
     "flavorKey": "sexcard.koshi_o_furu.flavor",
     "effects": [{ "kind": "qi_damage" }]
   },
@@ -61,7 +56,6 @@
     "ap": 2,
     "baseQi": 9,
     "target": "single",
-    "developable": true,
     "flavorKey": "sexcard.ushiro_kara_semeru.flavor",
     "effects": [{ "kind": "qi_damage" }, { "kind": "guard_down", "amount": 2 }]
   },
@@ -72,7 +66,6 @@
     "ap": 3,
     "baseQi": 6,
     "target": "single",
-    "developable": true,
     "flavorKey": "sexcard.ue_de_ugoku.flavor",
     "effects": [{ "kind": "qi_damage" }, { "kind": "guard_up", "amount": 3 }]
   },
@@ -83,12 +76,39 @@
     "ap": 2,
     "baseQi": 9,
     "target": "single",
-    "developable": true,
     "flavorKey": "sexcard.koumon_o_semeru.flavor",
     "effects": [
       { "kind": "qi_damage" },
       { "kind": "double_defense_ref" },
-      { "kind": "all_stats_down", "amount": 1 }
+      { "kind": "weaken_attr", "amount": 1 }
+    ]
+  },
+  {
+    "id": "kuchi_ni_dasaseru",
+    "name": "口に出させる！",
+    "attrs": ["kuchizuke"],
+    "ap": 3,
+    "baseQi": 2,
+    "target": "single",
+    "flavorKey": "sexcard.kuchi_ni_dasaseru.flavor",
+    "effects": [
+      { "kind": "qi_damage" },
+      { "kind": "targeted_finish", "gamanToEnemy": 7 }
+    ]
+  },
+  {
+    "id": "mune_to_kuchi_de_ukesaseru",
+    "name": "胸と口で受けさせる！",
+    "attrs": ["chichikuri"],
+    "ap": 4,
+    "baseQi": 3,
+    "target": "single",
+    "flavorKey": "sexcard.mune_to_kuchi_de_ukesaseru.flavor",
+    "effects": [
+      { "kind": "qi_damage" },
+      { "kind": "targeted_finish", "gamanToEnemy": 6 },
+      { "kind": "qi_defense_down", "amount": 2 },
+      { "kind": "weaken_attr", "amount": 1 }
     ]
   }
 ]

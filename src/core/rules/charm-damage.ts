@@ -1,23 +1,23 @@
 import type { CharmEnemyInstance, SexCardDef, SextechState } from "../model/charm.js";
 import { weaknessMultiplier } from "../model/charm.js";
 
-// 魅了バトルの数値モデル。式は docs/02「気力防御パラメータと回復・貫通の数値モデル」を単一情報源とする。
-// 「加算系を合算 → 開発倍率を掛ける → 気力防御を実数値減算（裏取りは×2参照）」を本ファイルに閉じ込め、
+// 魅了バトルの数値モデル。式は docs/02「気力防御パラメータと回復・貫通の数値モデル」/「我慢ゲージと絶頂・射精」を単一情報源とする。
+// 「加算系を合算 → 弱点倍率を掛ける → 気力防御を実数値減算（裏取りは×2参照）」を本ファイルに閉じ込め、
 // 二重掛けを構造的に不可能にする（通常戦闘の damage.ts と同じ思想）。
 
-/** せっくすてくの威力加算 ＝ 身 ＋ 鎬（docs/02「3部位とパラメータ」）。 */
+/** せっくすてくの威力加算 ＝ 身 ＋ 鎬（docs/02「3部位とパラメータ」）。性技の与気力・与我慢に乗る。 */
 export function sextechPower(sextech: SextechState): number {
   return sextech.mi + sextech.shinogi;
 }
 
-/** せっくすてくの防御（守り上乗せ）＝ 鎬 ＋ 切先。 */
+/** せっくすてくの守り上乗せ（四十八手の我慢被ダメ軽減）＝ 鎬 ＋ 切先。 */
 export function sextechDefense(sextech: SextechState): number {
   return sextech.shinogi + sextech.kissaki;
 }
 
-/** せっくすてくの連撃（開発加速の発生率。0..1）＝ (身 ＋ 切先) × 係数。 */
-export function sextechDevAccelRate(sextech: SextechState): number {
-  return Math.min(0.5, (sextech.mi + sextech.kissaki) * 0.05);
+/** せっくすてくの我慢タフネス（こゆきの gamanMax＋／射精威力＋）＝ 身 ＋ 切先。 */
+export function sextechGamanBonus(sextech: SextechState): number {
+  return sextech.mi + sextech.kissaki;
 }
 
 /** 複合でない単一属性技の属性を返す（基本8種は単一属性）。 */
@@ -38,9 +38,8 @@ export function effectiveStage(card: SexCardDef, enemy: CharmEnemyInstance): num
 }
 
 /**
- * 最終与気力ダメージ = max(0, (カード基礎 + 威力加算 + 祝福加算) × 開発倍率 − 敵の気力防御)
- *   ※裏取り属性技は「敵の気力防御 × 2」を減算（減算は開発倍率の"後"）。
- * 祝福加算はα版プロローグでは 0（祝福システム未実装）。
+ * 最終与気力ダメージ = max(0, (カード基礎 + 威力加算) × 弱点倍率 − 敵の気力防御)
+ *   ※裏取り属性技は「敵の気力防御 × 2」を減算（減算は倍率の"後"）。
  */
 export function computeQiDamage(
   card: SexCardDef,
@@ -49,7 +48,7 @@ export function computeQiDamage(
 ): { amount: number; stage: number } {
   const stage = effectiveStage(card, enemy);
   const mult = weaknessMultiplier(stage);
-  const base = card.baseQi + sextechPower(sextech); // 祝福加算は0
+  const base = card.baseQi + sextechPower(sextech);
   const afterMult = Math.floor(base * mult);
 
   const doubleRef = card.effects.some((e) => e.kind === "double_defense_ref");
@@ -59,7 +58,23 @@ export function computeQiDamage(
   return { amount, stage };
 }
 
-/** 乳繰りの与ダメ依存回復 ＝ floor(最終与気力ダメージ × 回復係数)（係数<1.0）。 */
-export function computeHeal(qiDamage: number, ratio: number): number {
+/** 敵の我慢へのダメージ ＝ 与気力ダメージと同量＋1（弱点を突くほど高ぶり、絶頂が近づく）。docs/02。
+ *  我慢削り→絶頂→気力大ダメージ、というリズムを主役にするため、気力直接削りより我慢削りを効かせる。 */
+export function computeGamanDamage(qiDamage: number): number {
+  return qiDamage + 1;
+}
+
+/** こゆき自身の我慢消費 ＝ ceil(baseQi / 2)（高火力技ほど自分も高ぶる）。 */
+export function selfGamanCost(card: SexCardDef): number {
+  return Math.ceil(card.baseQi / 2);
+}
+
+/** 乳繰り等の与ダメ依存の我慢回復 ＝ floor(与気力ダメージ × 係数)（係数<1.0）。 */
+export function computeGamanHeal(qiDamage: number, ratio: number): number {
   return Math.floor(qiDamage * ratio);
+}
+
+/** 狙い撃ち射精の敵への威力 ＝ 基礎 ＋ せっくすてく我慢タフネス。 */
+export function ejaculationDamage(base: number, sextech: SextechState): number {
+  return base + sextechGamanBonus(sextech);
 }

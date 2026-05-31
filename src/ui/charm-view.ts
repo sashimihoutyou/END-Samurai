@@ -2,11 +2,12 @@ import type { Game } from "../app/game.js";
 import type { ContentDB } from "../core/content/loader.js";
 import type { CharmBattleState, CharmEvent, SextechState } from "../core/model/charm.js";
 import { WEAKNESS_MAX_STAGE } from "../core/model/charm.js";
-import { canPlaySexCard, todomeDamage } from "../core/rules/charm-battle.js";
+import { canPlaySexCard } from "../core/rules/charm-battle.js";
 import { sextechDefense, sextechPower } from "../core/rules/charm-damage.js";
 import { escapeHtml, tLine, tPick } from "./text.js";
 
-// 魅了バトル（とろかし）のDOM描画。docs/08 §6.2 のレイアウト思想（HPバーなし＝気力ゲージ）。
+// 魅了バトル（とろかし）のDOM描画。docs/02「我慢ゲージと絶頂・射精」。
+// 敵：気力ゲージ＋我慢ゲージ／こゆき：HP・AP・我慢ゲージ・守り を左右対称に表示。
 
 function enemyName(state: CharmBattleState, uid: string): string {
   return state.enemies.find((e) => e.uid === uid)?.name ?? uid;
@@ -25,35 +26,42 @@ export function describeCharmEvent(db: ContentDB, state: CharmBattleState, ev: C
     case "TurnStarted": return `── ターン${ev.turn} ──`;
     case "SexCardPlayed": return `▶ ${db.sexCards.get(ev.cardId)?.name ?? ev.cardId}`;
     case "QiDamageDealt": {
-      const label = ev.developable ? stageLabel(db, nm(ev.enemyUid), ev.stage) : null;
-      return `　${nm(ev.enemyUid)}の気力に ${ev.amount} ダメージ${label ? `　${label}` : ""}`;
+      const e = state.enemies.find((x) => x.uid === ev.enemyUid);
+      const label = e ? stageLabel(db, nm(ev.enemyUid), ev.stage) : null;
+      return `　${nm(ev.enemyUid)}の気力に ${ev.amount}${label ? `　${label}` : ""}`;
     }
-    case "DevelopmentUp": return `　✦ ${nm(ev.enemyUid)}の弱点が育った……（開発）`;
+    case "GamanDamageDealt": return `　${nm(ev.enemyUid)}の我慢を ${ev.amount} 削った`;
+    case "EnemyClimaxed": {
+      const e = state.enemies.find((x) => x.uid === ev.enemyUid);
+      const line = e ? tPick(db, `charm.climax.${e.defId}`) : null;
+      return `　💥 ${line ?? `${nm(ev.enemyUid)}は達してしまった……`}（気力 -${ev.qiBonus}）`;
+    }
+    case "WeaknessDown": return `　${nm(ev.enemyUid)}の感じる場所が、ひとつ脆くなった`;
     case "QiDefenseDown": return `　${nm(ev.enemyUid)}の気力防御 -${ev.amount}`;
     case "AtkDebuffApplied": return `　${nm(ev.enemyUid)}の攻めが弱まった`;
-    case "AllStatsDown": return `　${nm(ev.enemyUid)}の全身から力が抜けた`;
-    case "Healed": return `　こゆきはHPを ${ev.amount} 回復`;
+    case "GamanRecovered": return `　こゆきは少し落ち着いた（我慢 +${ev.amount}）`;
+    case "KoyukiGamanSelf": return ev.amount > 0 ? `　こゆきも高ぶってきた（我慢 -${ev.amount}）` : null;
+    case "KoyukiGamanDamaged": return `　こゆきの我慢を ${ev.amount} 削られた${ev.blocked > 0 ? `（${ev.blocked}軽減）` : ""}`;
+    case "Ejaculated":
+      return ev.trigger === "self"
+        ? tPick(db, ev.attr ? `charm.ejac.self.${ev.attr}` : "charm.ejac.self.generic") ?? `▶ こゆきは狙って放った（HP -${ev.hpLoss}）`
+        : tPick(db, "charm.ejac.burst") ?? `💢 こゆきは堪えきれず暴発した……（HP -${ev.hpLoss}）`;
     case "GuardChanged": return ev.amount >= 0 ? `　守り +${ev.amount}` : `　守り ${ev.amount}`;
-    case "EnemyClimaxed": return `　${nm(ev.enemyUid)}は気力を使い果たした……（痙攣して放心）`;
+    case "EnemyExhausted": return `　${nm(ev.enemyUid)}は気力を使い果たした……（放心）`;
     case "SextechPointGained": return tLine(db, "charm.sextech.gained");
     case "TodomeReady": return `　★ ${nm(ev.enemyUid)}に『とどめ！』を刺せる`;
-    case "TodomeUsed": return ev.finisher ? `▶ とどめ！　——決着` : `▶ とどめ！（HP半分を消費）`;
+    case "TodomeUsed": return `▶ とどめ！　——決着`;
     case "CompanionJoined": return null; // リザルト画面で描く
     case "EnemyActed": {
       const e = state.enemies.find((x) => x.uid === ev.enemyUid);
       const intent = e?.intents.find((i) => i.id === ev.intentId);
       return `◀ ${nm(ev.enemyUid)}：${escapeHtml(intent?.label ?? ev.intentId)}`;
     }
-    case "KoyukiDamaged": return `　こゆきに ${ev.amount} ダメージ${ev.blocked > 0 ? `（${ev.blocked}軽減）` : ""}`;
     case "StatusApplied": return `　こゆきは「${ev.status}」を受けた`;
     case "WeaknessReaction": return tPick(db, `charm.reaction.${ev.enemyDefId}.${ev.attr}`) ?? null;
     case "BattleWon": return `🎉 とろかし、成功`;
     case "BattleLost": return `💀 こゆきは力尽きた……`;
   }
-}
-
-function sextechRow(label: string, value: number): string {
-  return `${label}${value}`;
 }
 
 export function renderCharm(game: Game, root: HTMLElement): void {
@@ -63,15 +71,17 @@ export function renderCharm(game: Game, root: HTMLElement): void {
 
   const sdef = sextechDefense(charm.sextech);
   const power = sextechPower(charm.sextech);
-  const ready = game.charmIsTodomeReady();
 
   const enemiesHtml = charm.enemies
     .map((e) => {
-      const pct = (e.qi / e.qiMax) * 100;
+      const qiPct = (e.qi / e.qiMax) * 100;
+      const gamanPct = (e.gaman / e.gamanMax) * 100;
       return `<div class="enemy ${e.defeated ? "dead" : ""}">
         <div class="enemy-name">${escapeHtml(e.name)}</div>
         <div class="enemy-hp">気力 ${e.qi}/${e.qiMax}　気力防御 ${e.qiDefense}</div>
-        <div class="bar charm"><span style="width:${pct}%"></span></div>
+        <div class="bar charm"><span style="width:${qiPct}%"></span></div>
+        <div class="enemy-hp">我慢 ${e.gaman}/${e.gamanMax}</div>
+        <div class="bar gaman"><span style="width:${gamanPct}%"></span></div>
         <div class="intent">${e.defeated ? "放心して動けない……" : `次：${escapeHtml(e.intents[e.intentIndex].label)}`}</div>
       </div>`;
     })
@@ -81,20 +91,22 @@ export function renderCharm(game: Game, root: HTMLElement): void {
     .map((def) => {
       const playable = canPlaySexCard(db, charm, def.id);
       const flavor = def.flavorKey ? tLine(db, def.flavorKey) : "";
-      return `<button class="card sex ${playable ? "" : "disabled"}" data-card="${def.id}" title="${escapeHtml(flavor)}" ${playable ? "" : "disabled"}>
+      const isFinish = def.effects.some((e) => e.kind === "targeted_finish");
+      return `<button class="card sex ${isFinish ? "finish" : ""} ${playable ? "" : "disabled"}" data-card="${def.id}" title="${escapeHtml(flavor)}" ${playable ? "" : "disabled"}>
         <div class="card-name">${escapeHtml(def.name)}</div>
         <div class="card-ap">AP ${def.ap}・気力${def.baseQi}</div>
       </button>`;
     })
     .join("");
 
-  // とどめ！ボタン
-  const todomeClass = ready ? "todome ready" : "todome";
+  const ready = game.charmIsTodomeReady();
+  const todomeClass = ready ? "todome ready" : "todome disabled";
   const todomeText = game.charmTodomeArmed
-    ? (ready ? "本当に？（もう一度で決着）" : "本当に？（HP半分を消費）")
-    : (ready ? `${tLine(db, "charm.todome.label")}（決着！）` : `${tLine(db, "charm.todome.label")}（HP半分＋残AP / ${todomeDamage(charm)}）`);
+    ? "本当に？（もう一度で決着）"
+    : ready
+      ? `${tLine(db, "charm.todome.label")}（決着！）`
+      : `${tLine(db, "charm.todome.label")}（相手が放心したら）`;
 
-  // せっくすてく割り振り
   const allocHtml =
     charm.sextechPoints > 0
       ? `<div class="sextech-alloc">
@@ -106,6 +118,8 @@ export function renderCharm(game: Game, root: HTMLElement): void {
          </div>`
       : "";
 
+  const gamanPct = (charm.gaman / charm.gamanMax) * 100;
+
   root.innerHTML = `
     <h1>とろかし — お豊</h1>
     <p class="flavor pink">${escapeHtml(tLine(db, "charm.otoyo.start"))}</p>
@@ -113,12 +127,14 @@ export function renderCharm(game: Game, root: HTMLElement): void {
     <div class="enemies">${enemiesHtml}</div>
     <div class="koyuki charm">
       <div>こゆき　HP ${charm.hp}/${charm.maxHp}　AP ${charm.ap}/${charm.apMax}　守り 🛡${charm.guard}${sdef > 0 ? `(+${sdef})` : ""}</div>
-      <div class="sword">もう一本の刀　${sextechRow("身", charm.sextech.mi)} / ${sextechRow("鎬", charm.sextech.shinogi)} / ${sextechRow("切先", charm.sextech.kissaki)}　［威力+${power}］</div>
+      <div class="enemy-hp">我慢 ${charm.gaman}/${charm.gamanMax}</div>
+      <div class="bar gaman koyuki-gaman"><span style="width:${gamanPct}%"></span></div>
+      <div class="sword">もう一本の刀　身${charm.sextech.mi} / 鎬${charm.sextech.shinogi} / 切先${charm.sextech.kissaki}　［威力+${power}］</div>
     </div>
     ${allocHtml}
     <div class="hand">${handHtml}</div>
     <div class="controls">
-      <button id="todome" class="${todomeClass}">${escapeHtml(todomeText)}</button>
+      <button id="todome" class="${todomeClass}" ${ready ? "" : "disabled"}>${escapeHtml(todomeText)}</button>
       <button id="endturn" ${charm.phase !== "player" ? "disabled" : ""}>ターン終了</button>
     </div>
     <pre class="log">${escapeHtml(game.log.slice(-16).join("\n"))}</pre>
