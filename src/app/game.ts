@@ -60,6 +60,8 @@ export class Game {
   screenCharm = false;
   /** charm UI：とどめ確認モードか（最終確認の1タップ） */
   charmTodomeArmed = false;
+  /** 直近のとろかしバトルが処女喪失回（＝初回）か。終了台詞の出し分けに使う。docs/09 §4 */
+  charmFirstTime = false;
 
   private battleRng: Rng = createRng(NORA_SEED);
   private charmRng: Rng = createRng(CHARM_SEED);
@@ -150,6 +152,9 @@ export class Game {
   beginCharmBattle(): void {
     this.charmRng = createRng(CHARM_SEED);
     this.log = [];
+    // 処女喪失は永続フラグ。未喪失なら今回が処女喪失回＝初挿入専用台詞・初回終了台詞を出す。
+    const virgin = !this.run.flags.otoyoDeflowered;
+    this.charmFirstTime = virgin;
     const started = startCharmBattle(
       this.db,
       {
@@ -157,6 +162,7 @@ export class Game {
         hp: this.run.hp,
         maxHp: this.run.maxHp,
         sextech: this.run.sextech,
+        virgin,
       },
       this.charmRng,
     );
@@ -240,6 +246,7 @@ export class Game {
         this.run.companions.push({ id: "otoyo", affection: "mid" });
       }
       this.run.flags.otoyoJoined = true;
+      this.run.flags.otoyoDeflowered = true; // とどめ（中出し）で処女喪失を永続化。次回以降は再戦台詞へ
       this.beginCharmResult();
       return;
     }

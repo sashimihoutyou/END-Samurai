@@ -85,15 +85,19 @@ export function renderCharmIntro(game: Game, root: HTMLElement): void {
 
 export function renderCharmResult(game: Game, root: HTMLElement): void {
   const db = game.db;
-  const pages = tLines(db, "charm.result.join");
+  // 終了台詞を出し分け：初回（処女喪失回）は加入イベント、再戦回は短い再戦台詞。docs/09 §4
+  const pages = tLines(db, game.charmFirstTime ? "charm.result.join" : "charm.result.rematch");
   const last = game.page >= pages.length - 1;
+  const footer = game.charmFirstTime
+    ? `<p class="result-stat">仲間：お豊（鍛冶屋）／こゆき HP ${game.run.hp}/${game.run.maxHp}</p>
+       <p class="title-note">——ここまでがα版プロローグ。お豊を連れて、こゆきの旅は続く。</p>`
+    : `<p class="result-stat">お豊（鍛冶屋）／こゆき HP ${game.run.hp}/${game.run.maxHp}</p>`;
   root.innerHTML = `
     <div class="screen narration-screen">
       <h1>とろかし、成功</h1>
       <p class="narration">${escapeHtml(pages[game.page])}</p>
       ${pageDots(game.page, pages.length)}
-      ${last ? `<p class="result-stat">仲間：お豊（鍛冶屋）／こゆき HP ${game.run.hp}/${game.run.maxHp}</p>
-                <p class="title-note">——ここまでがα版プロローグ。お豊を連れて、こゆきの旅は続く。</p>` : ""}
+      ${last ? footer : ""}
       <button id="next" class="bigbtn">${last ? "タイトルへ" : "次へ"}</button>
     </div>
   `;
