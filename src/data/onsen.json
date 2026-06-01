@@ -3,29 +3,52 @@
     "id": "onsen_minna",
     "partnerId": "musume_shikabane",
     "partnerSource": "rescued",
+    "minRescued": 2,
     "introKey": "onsen.minna.intro",
+    "threshold": 7,
     "rewardPart": "mi",
-    "rewardPoints": 2,
+    "rewardDivisor": 2,
     "stages": [
       {
         "textKey": "onsen.minna.s1",
         "choices": [
-          { "labelKey": "onsen.minna.s1.a", "correct": true, "resultKey": "onsen.minna.s1.a.res" },
-          { "labelKey": "onsen.minna.s1.b", "correct": false, "resultKey": "onsen.minna.s1.b.res" }
+          { "labelKey": "onsen.minna.s1.kiss", "score": 2, "resultKey": "onsen.minna.s1.kiss.res" },
+          { "labelKey": "onsen.minna.s1.hug", "score": 1, "resultKey": "onsen.minna.s1.hug.res" },
+          { "labelKey": "onsen.minna.s1.grope", "score": 0, "resultKey": "onsen.minna.s1.grope.res" }
         ]
       },
       {
         "textKey": "onsen.minna.s2",
         "choices": [
-          { "labelKey": "onsen.minna.s2.a", "correct": false, "resultKey": "onsen.minna.s2.a.res" },
-          { "labelKey": "onsen.minna.s2.b", "correct": true, "resultKey": "onsen.minna.s2.b.res" }
+          { "labelKey": "onsen.minna.s2.kissbreast", "score": 2, "resultKey": "onsen.minna.s2.kissbreast.res" },
+          { "labelKey": "onsen.minna.s2.fingersuck", "score": 1, "resultKey": "onsen.minna.s2.fingersuck.res" },
+          { "labelKey": "onsen.minna.s2.back", "score": 0, "resultKey": "onsen.minna.s2.back.res" }
         ]
       },
       {
         "textKey": "onsen.minna.s3",
         "choices": [
-          { "labelKey": "onsen.minna.s3.a", "correct": true, "resultKey": "onsen.minna.s3.a.res" },
-          { "labelKey": "onsen.minna.s3.b", "correct": false, "resultKey": "onsen.minna.s3.b.res" }
+          { "labelKey": "onsen.minna.s3.sumata", "score": 2, "resultKey": "onsen.minna.s3.sumata.res" },
+          { "labelKey": "onsen.minna.s3.paizurifera", "score": 1, "resultKey": "onsen.minna.s3.paizurifera.res" },
+          { "labelKey": "onsen.minna.s3.anal", "score": 0, "resultKey": "onsen.minna.s3.anal.res" }
+        ]
+      },
+      {
+        "textKey": "onsen.minna.s4",
+        "choices": [
+          { "labelKey": "onsen.minna.s4.normal", "score": 2, "resultKey": "onsen.minna.s4.normal.res" },
+          { "labelKey": "onsen.minna.s4.back", "score": 1, "resultKey": "onsen.minna.s4.back.res" },
+          { "labelKey": "onsen.minna.s4.ride", "score": 1, "resultKey": "onsen.minna.s4.ride.res" },
+          { "labelKey": "onsen.minna.s4.anal", "score": 0, "resultKey": "onsen.minna.s4.anal.res" }
+        ]
+      },
+      {
+        "textKey": "onsen.minna.s5",
+        "choices": [
+          { "labelKey": "onsen.minna.s5.creampie", "score": 2, "resultKey": "onsen.minna.s5.creampie.res" },
+          { "labelKey": "onsen.minna.s5.mouth", "score": 1, "resultKey": "onsen.minna.s5.mouth.res" },
+          { "labelKey": "onsen.minna.s5.paizuri", "score": 1, "resultKey": "onsen.minna.s5.paizuri.res" },
+          { "labelKey": "onsen.minna.s5.bukkake", "score": 0, "resultKey": "onsen.minna.s5.bukkake.res" }
         ]
       }
     ],
@@ -37,32 +60,166 @@
     "partnerId": "otoyo",
     "partnerSource": "companion",
     "introKey": "onsen.otoyo.intro",
+    "threshold": 7,
     "rewardPart": "shinogi",
-    "rewardPoints": 1,
+    "rewardDivisor": 2,
     "stages": [
       {
         "textKey": "onsen.otoyo.s1",
         "choices": [
-          { "labelKey": "onsen.otoyo.s1.a", "correct": true, "resultKey": "onsen.otoyo.s1.a.res" },
-          { "labelKey": "onsen.otoyo.s1.b", "correct": false, "resultKey": "onsen.otoyo.s1.b.res" }
+          { "labelKey": "onsen.otoyo.s1.kiss", "score": 2, "resultKey": "onsen.otoyo.s1.kiss.res" },
+          { "labelKey": "onsen.otoyo.s1.hug", "score": 1, "resultKey": "onsen.otoyo.s1.hug.res" },
+          { "labelKey": "onsen.otoyo.s1.grope", "score": 0, "resultKey": "onsen.otoyo.s1.grope.res" }
         ]
       },
       {
         "textKey": "onsen.otoyo.s2",
         "choices": [
-          { "labelKey": "onsen.otoyo.s2.a", "correct": true, "resultKey": "onsen.otoyo.s2.a.res" },
-          { "labelKey": "onsen.otoyo.s2.b", "correct": false, "resultKey": "onsen.otoyo.s2.b.res" }
+          { "labelKey": "onsen.otoyo.s2.kissbreast", "score": 2, "resultKey": "onsen.otoyo.s2.kissbreast.res" },
+          { "labelKey": "onsen.otoyo.s2.fingersuck", "score": 1, "resultKey": "onsen.otoyo.s2.fingersuck.res" },
+          { "labelKey": "onsen.otoyo.s2.back", "score": 0, "resultKey": "onsen.otoyo.s2.back.res" }
         ]
       },
       {
         "textKey": "onsen.otoyo.s3",
         "choices": [
-          { "labelKey": "onsen.otoyo.s3.a", "correct": false, "resultKey": "onsen.otoyo.s3.a.res" },
-          { "labelKey": "onsen.otoyo.s3.b", "correct": true, "resultKey": "onsen.otoyo.s3.b.res" }
+          { "labelKey": "onsen.otoyo.s3.sumata", "score": 1, "resultKey": "onsen.otoyo.s3.sumata.res" },
+          { "labelKey": "onsen.otoyo.s3.paizurifera", "score": 2, "resultKey": "onsen.otoyo.s3.paizurifera.res" },
+          { "labelKey": "onsen.otoyo.s3.anal", "score": 0, "resultKey": "onsen.otoyo.s3.anal.res" }
+        ]
+      },
+      {
+        "textKey": "onsen.otoyo.s4",
+        "choices": [
+          { "labelKey": "onsen.otoyo.s4.normal", "score": 2, "resultKey": "onsen.otoyo.s4.normal.res" },
+          { "labelKey": "onsen.otoyo.s4.back", "score": 1, "resultKey": "onsen.otoyo.s4.back.res" },
+          { "labelKey": "onsen.otoyo.s4.ride", "score": 1, "resultKey": "onsen.otoyo.s4.ride.res" },
+          { "labelKey": "onsen.otoyo.s4.anal", "score": 0, "resultKey": "onsen.otoyo.s4.anal.res" }
+        ]
+      },
+      {
+        "textKey": "onsen.otoyo.s5",
+        "choices": [
+          { "labelKey": "onsen.otoyo.s5.creampie", "score": 2, "resultKey": "onsen.otoyo.s5.creampie.res" },
+          { "labelKey": "onsen.otoyo.s5.mouth", "score": 1, "resultKey": "onsen.otoyo.s5.mouth.res" },
+          { "labelKey": "onsen.otoyo.s5.paizuri", "score": 1, "resultKey": "onsen.otoyo.s5.paizuri.res" },
+          { "labelKey": "onsen.otoyo.s5.bukkake", "score": 0, "resultKey": "onsen.otoyo.s5.bukkake.res" }
         ]
       }
     ],
     "leadOutcomeKey": "onsen.otoyo.lead",
     "indulgentOutcomeKey": "onsen.otoyo.indulgent"
+  },
+  {
+    "id": "onsen_aoi",
+    "partnerId": "aoi",
+    "partnerSource": "companion",
+    "introKey": "onsen.aoi.intro",
+    "threshold": 12,
+    "rewardPart": "kissaki",
+    "rewardDivisor": 4,
+    "multipliers": { "foreplay": 2, "cowgirl": 1.5, "anal": 1.5 },
+    "stages": [
+      {
+        "textKey": "onsen.aoi.s1",
+        "choices": [
+          { "labelKey": "onsen.aoi.s1.tease", "score": 2, "tag": "foreplay", "resultKey": "onsen.aoi.s1.tease.res" },
+          { "labelKey": "onsen.aoi.s1.hug", "score": 1, "tag": "foreplay", "resultKey": "onsen.aoi.s1.hug.res" },
+          { "labelKey": "onsen.aoi.s1.rush", "score": 0, "resultKey": "onsen.aoi.s1.rush.res" }
+        ]
+      },
+      {
+        "textKey": "onsen.aoi.s2",
+        "choices": [
+          { "labelKey": "onsen.aoi.s2.slowcaress", "score": 2, "tag": "foreplay", "resultKey": "onsen.aoi.s2.slowcaress.res" },
+          { "labelKey": "onsen.aoi.s2.tonguefinger", "score": 1, "tag": "foreplay", "resultKey": "onsen.aoi.s2.tonguefinger.res" },
+          { "labelKey": "onsen.aoi.s2.hurry", "score": 0, "resultKey": "onsen.aoi.s2.hurry.res" }
+        ]
+      },
+      {
+        "textKey": "onsen.aoi.s3",
+        "choices": [
+          { "labelKey": "onsen.aoi.s3.teasefera", "score": 2, "tag": "foreplay", "resultKey": "onsen.aoi.s3.teasefera.res" },
+          { "labelKey": "onsen.aoi.s3.sumata", "score": 1, "resultKey": "onsen.aoi.s3.sumata.res" },
+          { "labelKey": "onsen.aoi.s3.anallick", "score": 1, "tag": "anal", "resultKey": "onsen.aoi.s3.anallick.res" }
+        ]
+      },
+      {
+        "textKey": "onsen.aoi.s4",
+        "choices": [
+          { "labelKey": "onsen.aoi.s4.cowgirl", "score": 2, "tag": "cowgirl", "resultKey": "onsen.aoi.s4.cowgirl.res" },
+          { "labelKey": "onsen.aoi.s4.back", "score": 1, "resultKey": "onsen.aoi.s4.back.res" },
+          { "labelKey": "onsen.aoi.s4.normal", "score": 1, "resultKey": "onsen.aoi.s4.normal.res" },
+          { "labelKey": "onsen.aoi.s4.anal", "score": 1, "tag": "anal", "resultKey": "onsen.aoi.s4.anal.res" }
+        ]
+      },
+      {
+        "textKey": "onsen.aoi.s5",
+        "choices": [
+          { "labelKey": "onsen.aoi.s5.cowgirl", "score": 2, "tag": "cowgirl", "resultKey": "onsen.aoi.s5.cowgirl.res" },
+          { "labelKey": "onsen.aoi.s5.anal", "score": 1, "tag": "anal", "resultKey": "onsen.aoi.s5.anal.res" },
+          { "labelKey": "onsen.aoi.s5.mouth", "score": 1, "resultKey": "onsen.aoi.s5.mouth.res" },
+          { "labelKey": "onsen.aoi.s5.normal", "score": 1, "resultKey": "onsen.aoi.s5.normal.res" }
+        ]
+      }
+    ],
+    "leadOutcomeKey": "onsen.aoi.lead",
+    "indulgentOutcomeKey": "onsen.aoi.indulgent"
+  },
+  {
+    "id": "onsen_musume",
+    "partnerId": "musume_shikabane",
+    "partnerSource": "rescued",
+    "minRescued": 1,
+    "introKey": "onsen.musume.intro",
+    "threshold": 7,
+    "rewardPart": "mi",
+    "rewardDivisor": 2,
+    "stages": [
+      {
+        "textKey": "onsen.musume.s1",
+        "choices": [
+          { "labelKey": "onsen.musume.s1.kiss", "score": 2, "resultKey": "onsen.musume.s1.kiss.res" },
+          { "labelKey": "onsen.musume.s1.hug", "score": 1, "resultKey": "onsen.musume.s1.hug.res" },
+          { "labelKey": "onsen.musume.s1.grope", "score": 0, "resultKey": "onsen.musume.s1.grope.res" }
+        ]
+      },
+      {
+        "textKey": "onsen.musume.s2",
+        "choices": [
+          { "labelKey": "onsen.musume.s2.kissbreast", "score": 2, "resultKey": "onsen.musume.s2.kissbreast.res" },
+          { "labelKey": "onsen.musume.s2.fingersuck", "score": 1, "resultKey": "onsen.musume.s2.fingersuck.res" },
+          { "labelKey": "onsen.musume.s2.back", "score": 0, "resultKey": "onsen.musume.s2.back.res" }
+        ]
+      },
+      {
+        "textKey": "onsen.musume.s3",
+        "choices": [
+          { "labelKey": "onsen.musume.s3.sumata", "score": 2, "resultKey": "onsen.musume.s3.sumata.res" },
+          { "labelKey": "onsen.musume.s3.paizurifera", "score": 1, "resultKey": "onsen.musume.s3.paizurifera.res" },
+          { "labelKey": "onsen.musume.s3.anal", "score": 0, "resultKey": "onsen.musume.s3.anal.res" }
+        ]
+      },
+      {
+        "textKey": "onsen.musume.s4",
+        "choices": [
+          { "labelKey": "onsen.musume.s4.normal", "score": 2, "resultKey": "onsen.musume.s4.normal.res" },
+          { "labelKey": "onsen.musume.s4.back", "score": 1, "resultKey": "onsen.musume.s4.back.res" },
+          { "labelKey": "onsen.musume.s4.ride", "score": 1, "resultKey": "onsen.musume.s4.ride.res" },
+          { "labelKey": "onsen.musume.s4.anal", "score": 0, "resultKey": "onsen.musume.s4.anal.res" }
+        ]
+      },
+      {
+        "textKey": "onsen.musume.s5",
+        "choices": [
+          { "labelKey": "onsen.musume.s5.creampie", "score": 2, "resultKey": "onsen.musume.s5.creampie.res" },
+          { "labelKey": "onsen.musume.s5.mouth", "score": 1, "resultKey": "onsen.musume.s5.mouth.res" },
+          { "labelKey": "onsen.musume.s5.paizuri", "score": 1, "resultKey": "onsen.musume.s5.paizuri.res" },
+          { "labelKey": "onsen.musume.s5.bukkake", "score": 0, "resultKey": "onsen.musume.s5.bukkake.res" }
+        ]
+      }
+    ],
+    "leadOutcomeKey": "onsen.musume.lead",
+    "indulgentOutcomeKey": "onsen.musume.indulgent"
   }
 ]

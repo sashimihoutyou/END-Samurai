@@ -57,7 +57,7 @@
         "id": "c_onsen",
         "type": "onsen",
         "label": "山あいの湯けむり（温泉）",
-        "onsenIds": ["onsen_minna", "onsen_otoyo"],
+        "onsenIds": ["onsen_otoyo", "onsen_aoi", "onsen_musume", "onsen_minna"],
         "next": ["c_pack"]
       },
       {

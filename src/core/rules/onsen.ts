@@ -1,25 +1,43 @@
-import type { OnsenEvent, OnsenResult, OnsenStage } from "../model/onsen.js";
+import type { OnsenChoice, OnsenEvent, OnsenResult, OnsenStage } from "../model/onsen.js";
 
-// 温泉シーンの結末判定（純粋関数）。App層は段を進めながら誤りの有無だけを記録し、
-// 結末の適用（せっくすてく加算・全回復）は本結果に従う。Godot移植時も同じ判定を流用できる。
+// 温泉シーンの結末判定（純粋関数）。App層は5段すべてを選ばせ（中断なし）、各選択の
+// 実効スコアを加算してから本関数で結末を決める。Godot移植時も同じ判定を流用できる。
 
-/** その段でidx番の選択肢が正しい一手か。 */
-export function isCorrectChoice(stage: OnsenStage, choiceIndex: number): boolean {
-  return stage.choices[choiceIndex]?.correct === true;
+/**
+ * 選択の実効スコア。基礎スコア（その相手の好み 0/1/2）に、相手固有の性感補正
+ * （タグ→倍率）を掛ける。例：葵は前戯×2・騎乗位×1.5・アナル×1.5。補正なしは×1。
+ */
+export function effectiveScore(event: OnsenEvent, choice: OnsenChoice): number {
+  const mult = choice.tag ? (event.multipliers?.[choice.tag] ?? 1) : 1;
+  return Math.round(choice.score * mult);
+}
+
+/** その段でidx番の選択肢の実効スコア。 */
+export function choiceScore(event: OnsenEvent, stage: OnsenStage, choiceIndex: number): number {
+  const choice = stage.choices[choiceIndex];
+  return choice ? effectiveScore(event, choice) : 0;
+}
+
+/** 全段で得られる最大スコア（各段の最高実効スコアの総和）。閾値設計の基準。 */
+export function maxOnsenScore(event: OnsenEvent): number {
+  return event.stages.reduce(
+    (sum, st) => sum + Math.max(...st.choices.map((c) => effectiveScore(event, c))),
+    0,
+  );
 }
 
 /**
- * 全段を正しく通せば lead（相手を先にイカせてせっくすてく獲得）。
- * 途中で誤れば indulgent（ねっとり全回復・せっくすてくなし）。いずれも温泉ゆえ全回復する。
+ * 合計スコアが閾値以上なら lead（相手が気絶するまで絶頂・こゆきが自信と経験を積む）、
+ * 未満なら indulgent（攻守逆転・相手主導で蕩かされる）。せっくすてく獲得はスコア比例。
+ * いずれの結末も温泉ゆえ全回復する。
  */
-export function resolveOnsen(event: OnsenEvent, erred: boolean): OnsenResult {
-  if (erred) {
-    return { outcome: "indulgent", sextechGain: 0, fullHeal: true };
-  }
+export function resolveOnsen(event: OnsenEvent, totalScore: number): OnsenResult {
+  const score = Math.max(0, totalScore);
   return {
-    outcome: "lead",
+    outcome: score >= event.threshold ? "lead" : "indulgent",
+    score,
     sextechPart: event.rewardPart,
-    sextechGain: event.rewardPoints,
+    sextechGain: Math.floor(score / event.rewardDivisor),
     fullHeal: true,
   };
 }

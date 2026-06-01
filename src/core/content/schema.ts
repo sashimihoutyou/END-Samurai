@@ -211,12 +211,13 @@ export const eventDefSchema = z.object({
   choices: z.array(z.object({ labelKey: z.string(), outcome: eventOutcomeSchema })).nonempty(),
 });
 
-// 温泉イベント（docs/05 リメイク）。複数段の選択式エロシーン。
+// 温泉イベント（docs/05 リメイク）。5段の選択式エロシーン（加点制・中断なし）。
 const sextechPart = z.enum(["mi", "shinogi", "kissaki"]);
 const onsenChoiceSchema = z.object({
   labelKey: z.string(),
-  correct: z.boolean(),
+  score: z.number().int().min(0),
   resultKey: z.string(),
+  tag: z.string().optional(),
 });
 const onsenStageSchema = z.object({
   textKey: z.string(),
@@ -228,10 +229,13 @@ export const onsenEventSchema = z.object({
   partnerSource: z.enum(["companion", "rescued"]),
   introKey: z.string(),
   stages: z.array(onsenStageSchema).nonempty(),
+  threshold: z.number().int().positive(),
   rewardPart: sextechPart,
-  rewardPoints: z.number().int().positive(),
+  rewardDivisor: z.number().int().positive(),
   leadOutcomeKey: z.string(),
   indulgentOutcomeKey: z.string(),
+  multipliers: z.record(z.string(), z.number().positive()).optional(),
+  minRescued: z.number().int().positive().optional(),
 });
 
 // 戦闘報酬（docs/03「戦闘報酬」・docs/08 §10 ドロップ候補）。

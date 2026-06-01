@@ -16,7 +16,7 @@ import {
   useTodome,
 } from "../core/rules/charm-battle.js";
 import { generateReward, type RewardOffer } from "../core/rules/reward.js";
-import { resolveOnsen } from "../core/rules/onsen.js";
+import { effectiveScore, resolveOnsen } from "../core/rules/onsen.js";
 import type { OnsenEvent, OnsenResult } from "../core/model/onsen.js";
 import { makeStarterDeck, makeStarterSword } from "./starter.js";
 import { describeBattleEvent, renderBattle } from "../ui/battle-view.js";
@@ -100,7 +100,7 @@ export class Game {
   onsenEvent: OnsenEvent | null = null;
   onsenPhase: OnsenPhase = "intro";
   onsenStageIndex = 0;
-  onsenErred = false; // どこかで誤ったか（誤ると indulgent 結末へ）
+  onsenScore = 0; // 好みに沿った手の累計（閾値以上で lead）
   onsenLastResultKey = ""; // 直近の選択の反応テキスト
   onsenResult: OnsenResult | null = null; // 結末（lead/indulgent）
   private onsenReturnNode: string | null = null;
@@ -338,7 +338,7 @@ export class Game {
         break;
       }
       case "onsen": {
-        const ev = this.pickOnsen(node.onsenIds ?? []);
+        const ev = this.pickOnsen(node.onsenIds ?? [], nodeId);
         if (!ev) {
           this.advanceTo(nodeId, "湯は冷めていた……（相手がいない）");
           return;
@@ -380,16 +380,22 @@ export class Game {
 
   // ── 温泉イベント（複数段の選択式エロシーン）────────────────────
 
-  /** 出現条件を満たす最初の温泉イベントを選ぶ（救済モブは rescuedCount>0、仲間は加入済み）。 */
-  private pickOnsen(ids: string[]): OnsenEvent | null {
-    for (const id of ids) {
-      const ev = this.db.onsen.get(id);
-      if (!ev) continue;
-      if (ev.partnerSource === "rescued" && this.run.rescuedCount <= 0) continue;
-      if (ev.partnerSource === "companion" && !this.run.companions.some((c) => c.id === ev.partnerId)) continue;
-      return ev;
-    }
-    return null;
+  /**
+   * 出現条件を満たす温泉イベントから1つを抽選する。
+   * その時いる仲間（加入済み companion）と、救済した村娘（単独＝minRescued1／複数＝同2）が
+   * 候補になり、誰が来るかはランダム。決定論のためノードIDと救済人数からシードを派生させる。
+   */
+  private pickOnsen(ids: string[], nodeId: string): OnsenEvent | null {
+    const pool = ids
+      .map((id) => this.db.onsen.get(id))
+      .filter((ev): ev is OnsenEvent => {
+        if (!ev) return false;
+        if (ev.partnerSource === "rescued") return this.run.rescuedCount >= (ev.minRescued ?? 1);
+        return this.run.companions.some((c) => c.id === ev.partnerId);
+      });
+    if (pool.length === 0) return null;
+    const rng = createRng(hashSeed(`onsen:${nodeId}:${this.run.rescuedCount}`));
+    return pool[rng.int(pool.length)];
   }
 
   private beginOnsen(ev: OnsenEvent, returnNode: string): void {
@@ -397,7 +403,7 @@ export class Game {
     this.onsenReturnNode = returnNode;
     this.onsenPhase = "intro";
     this.onsenStageIndex = 0;
-    this.onsenErred = false;
+    this.onsenScore = 0;
     this.onsenLastResultKey = "";
     this.onsenResult = null;
     this.page = 0;
@@ -422,23 +428,24 @@ export class Game {
     this.render();
   }
 
-  /** ステージの選択肢を選ぶ。誤れば以後 indulgent 結末が確定する。 */
+  /** ステージの選択肢を選ぶ。スコアを加算し、反応を見せる（中断はしない）。 */
   chooseOnsen(choiceIndex: number): void {
+    const ev = this.onsenEvent;
     const stage = this.onsenStage();
     const choice = stage?.choices[choiceIndex];
-    if (!choice) return;
-    if (!choice.correct) this.onsenErred = true;
+    if (!ev || !choice) return;
+    this.onsenScore += effectiveScore(ev, choice);
     this.onsenLastResultKey = choice.resultKey;
     this.onsenPhase = "choiceResult";
     this.render();
   }
 
-  /** 選択の反応を見たあと、次段へ進むか結末へ。 */
+  /** 選択の反応を見たあと、次段へ進む。最終段なら結末へ。 */
   onsenChoiceContinue(): void {
     const ev = this.onsenEvent;
     if (!ev) return;
     const lastStage = this.onsenStageIndex >= ev.stages.length - 1;
-    if (this.onsenErred || lastStage) {
+    if (lastStage) {
       this.applyOnsenOutcome();
     } else {
       this.onsenStageIndex += 1;
@@ -447,13 +454,13 @@ export class Game {
     this.render();
   }
 
-  /** 結末を確定し、せっくすてく加算・全回復を適用する（1回だけ）。 */
+  /** 結末を確定し、せっくすてく加算（スコア比例）・全回復を適用する（1回だけ）。 */
   private applyOnsenOutcome(): void {
     const ev = this.onsenEvent;
     if (!ev) return;
-    const result = resolveOnsen(ev, this.onsenErred);
+    const result = resolveOnsen(ev, this.onsenScore);
     this.onsenResult = result;
-    if (result.outcome === "lead" && result.sextechPart) {
+    if (result.sextechGain > 0) {
       this.run.sextech[result.sextechPart] += result.sextechGain;
     }
     if (result.fullHeal) {
@@ -473,10 +480,11 @@ export class Game {
       return;
     }
     const node = this.onsenReturnNode;
+    const gained = (this.onsenResult?.sextechGain ?? 0) > 0;
     const notice =
       this.onsenResult?.outcome === "lead"
-        ? "湯あがり、心も体もほぐれた（せっくすてく獲得）"
-        : "湯あがり、すっかり蕩けて全回復した";
+        ? `湯あがり、自信と経験を積んだ${gained ? "（せっくすてく獲得）" : ""}`
+        : `湯あがり、すっかり蕩かされて全回復した${gained ? "（せっくすてく獲得）" : ""}`;
     this.onsenEvent = null;
     this.onsenResult = null;
     this.onsenReturnNode = null;
