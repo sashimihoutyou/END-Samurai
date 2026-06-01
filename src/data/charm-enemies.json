@@ -10,10 +10,10 @@
       "kuchizuke": 3,
       "hogushi": 1,
       "chichikuri": 2,
-      "seikou": 1,
-      "ushirodori": 0,
-      "matagari": 0,
-      "uradori": 0
+      "seikou": 2,
+      "ushirodori": 2,
+      "matagari": 2,
+      "uradori": 2
     },
     "intents": [
       {

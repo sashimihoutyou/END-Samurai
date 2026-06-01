@@ -176,3 +176,37 @@ describe("せっくすてくポイント（3ターンごと）と我慢タフネ
     expect(state.sextechPoints).toBeGreaterThanOrEqual(1);
   });
 });
+
+describe("お豊（チュートリアル要員）の弱点：挿入技はすべて×1.5以上", () => {
+  it("正攻・後ろ取り・またがり・裏取りの初期弱点段階が2（×1.5）以上", () => {
+    const { state } = startCharmBattle(db, setup(), createRng(1));
+    const w = otoyo(state).weakness;
+    for (const attr of ["seikou", "ushirodori", "matagari", "uradori"] as const) {
+      expect(w[attr], `${attr} が ×1.5 未満`).toBeGreaterThanOrEqual(2);
+    }
+  });
+});
+
+describe("奉仕系の狙い撃ち射精技（フェラ／パイズリ）は自分の被ダメが大きい", () => {
+  it("フェラチオさせる！は能動射精で、HP減が既定（3）より大きい", () => {
+    const { state } = startCharmBattle(db, setup({ hp: 30, maxHp: 30 }), createRng(1));
+    const r = playSexCard(db, state, "ferachio_saseru", null, createRng(1));
+    expect(r.events.some((e) => e.type === "Ejaculated" && e.trigger === "self")).toBe(true);
+    expect(r.state.hp).toBe(30 - 5); // selfHpLoss=5（既定3より大）
+  });
+
+  it("パイズリさせる！も能動射精で、HP減が大きい（selfHpLoss=6）", () => {
+    const { state } = startCharmBattle(db, setup({ hp: 30, maxHp: 30 }), createRng(1));
+    const r = playSexCard(db, state, "paizuri_saseru", null, createRng(1));
+    expect(r.events.some((e) => e.type === "Ejaculated" && e.trigger === "self")).toBe(true);
+    expect(r.state.hp).toBe(30 - 6);
+  });
+
+  it("奉仕系は相手の我慢を大きく削り絶頂を誘発する（射精するための技）", () => {
+    const { state } = startCharmBattle(db, setup(), createRng(1));
+    const gamanBefore = otoyo(state).gaman;
+    const r = playSexCard(db, state, "ferachio_saseru", null, createRng(1));
+    const climaxed = r.events.some((e) => e.type === "EnemyClimaxed");
+    expect(climaxed || otoyo(r.state).gaman < gamanBefore).toBe(true);
+  });
+});

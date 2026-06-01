@@ -110,5 +110,34 @@
       { "kind": "qi_defense_down", "amount": 2 },
       { "kind": "weaken_attr", "amount": 1 }
     ]
+  },
+  {
+    "id": "ferachio_saseru",
+    "name": "フェラチオさせる！",
+    "attrs": ["kuchizuke"],
+    "ap": 2,
+    "baseQi": 1,
+    "target": "single",
+    "flavorKey": "sexcard.ferachio_saseru.flavor",
+    "effects": [
+      { "kind": "qi_damage" },
+      { "kind": "atk_debuff", "amount": 1 },
+      { "kind": "targeted_finish", "gamanToEnemy": 8, "selfHpLoss": 5 }
+    ]
+  },
+  {
+    "id": "paizuri_saseru",
+    "name": "パイズリさせる！",
+    "attrs": ["chichikuri"],
+    "ap": 3,
+    "baseQi": 2,
+    "target": "single",
+    "flavorKey": "sexcard.paizuri_saseru.flavor",
+    "effects": [
+      { "kind": "qi_damage" },
+      { "kind": "qi_defense_down", "amount": 1 },
+      { "kind": "weaken_attr", "amount": 1 },
+      { "kind": "targeted_finish", "gamanToEnemy": 7, "selfHpLoss": 6 }
+    ]
   }
 ]
