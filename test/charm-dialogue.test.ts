@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildContent } from "../src/data/index.js";
 import { createRng } from "../src/core/rng/rng.js";
-import { playSexCard, startCharmBattle, type CharmSetup } from "../src/core/rules/charm-battle.js";
+import { playSexCard, startCharmBattle, useTodome, type CharmSetup } from "../src/core/rules/charm-battle.js";
 import { describeCharmEvent } from "../src/ui/charm-view.js";
 import type { CharmEvent } from "../src/core/model/charm.js";
 
@@ -50,8 +50,8 @@ describe("docs/09 §4 初挿入専用台詞（処女フラグ）", () => {
     expect(hit?.first).toBe(true);
     expect(r.state.virgin).toBe(false); // 処女喪失
     const line = describeCharmEvent(db, r.state, hit!);
-    expect(line).toContain("お豊「");
-    expect(line).toContain("初めて");
+    const pool = db.text["charm.firstinsert.otoyo.seikou"] as string[]; // §4 専用台詞プールから引かれている
+    expect(pool.some((l) => line!.includes(l))).toBe(true);
   });
 
   it("前戯系（くちづけ）では処女フラグは下りない", () => {
@@ -73,6 +73,40 @@ describe("docs/09 §4 初挿入専用台詞（処女フラグ）", () => {
       const has = db.text[`charm.firstinsert.otoyo.${attr}`] ?? db.text["charm.firstinsert.otoyo.generic"];
       expect(Array.isArray(has) && has.length > 0, `${attr} の初挿入台詞が無い`).toBe(true);
     }
+  });
+});
+
+describe("とどめ＝初挿入の扱い（前戯のみでとどめに到達した場合）", () => {
+  function readyTodome(virgin: boolean) {
+    const { state } = startCharmBattle(db, setup({ virgin }), createRng(1));
+    state.enemies[0].qi = 0; // 気力0＝放心（とどめ可）まで削った状態を再現
+    state.enemies[0].defeated = true;
+    return state;
+  }
+
+  it("処女のままとどめに到達すると、とどめが初挿入を兼ね処女フラグが下りる＋初回専用台詞", () => {
+    const state = readyTodome(true);
+    const r = useTodome(db, state, null, createRng(1));
+    const td = r.events.find((e): e is Extract<CharmEvent, { type: "TodomeUsed" }> => e.type === "TodomeUsed");
+    expect(td?.first).toBe(true);
+    expect(r.state.virgin).toBe(false); // とどめ（中出し）で処女喪失
+    const line = describeCharmEvent(db, r.state, td!);
+    const pool = db.text["charm.todome.otoyo.first"] as string[]; // 初回専用とどめ台詞から引かれている
+    expect(pool.some((l) => line!.includes(l))).toBe(true);
+  });
+
+  it("経験済みなら通常のとどめ台詞（初回専用は出ない）", () => {
+    const state = readyTodome(false);
+    const r = useTodome(db, state, null, createRng(1));
+    const td = r.events.find((e): e is Extract<CharmEvent, { type: "TodomeUsed" }> => e.type === "TodomeUsed");
+    expect(td?.first).toBe(false);
+    const line = describeCharmEvent(db, r.state, td!);
+    expect(line).toContain("お豊「");
+  });
+
+  it("初回専用とどめ台詞データが存在する", () => {
+    const lines = db.text["charm.todome.otoyo.first"];
+    expect(Array.isArray(lines) && lines.length > 0).toBe(true);
   });
 });
 

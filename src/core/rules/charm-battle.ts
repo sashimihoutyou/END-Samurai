@@ -194,6 +194,7 @@ function resolveEjaculation(
   target: CharmEnemyInstance | null,
   finishToEnemy: number,
   events: CharmEvent[],
+  selfHpLoss?: number,
 ): boolean {
   let hpLoss: number;
   if (trigger === "enemy") {
@@ -203,9 +204,9 @@ function resolveEjaculation(
       damageEnemy(target, EJAC_ENEMY_QI_BONUS, 0, attr, events);
     }
   } else {
-    // 狙い撃ち：能動射精。HP小減。気力へは控えめ・敵の「我慢」に大ダメージを与えて絶頂を誘発し、
-    // 絶頂経由で気力を崩す（即殺にはならない）＋部位弱化（呼び出し側で weaken_attr 処理）。
-    hpLoss = EJAC_SELF_HP_LOSS;
+    // 狙い撃ち：能動射精。HP小減（カード指定があればそれ＝フェラ/パイズリ等は被ダメ大）。気力へは控えめ・敵の「我慢」に
+    // 大ダメージを与えて絶頂を誘発し、絶頂経由で気力を崩す（即殺にはならない）＋部位弱化（呼び出し側で weaken_attr 処理）。
+    hpLoss = selfHpLoss ?? EJAC_SELF_HP_LOSS;
     if (target) {
       const dmg = ejaculationDamage(finishToEnemy, state.sextech);
       damageEnemy(target, Math.floor(dmg / 3), dmg, attr, events);
@@ -309,7 +310,7 @@ export function playSexCard(
   if (targetedFinish && targetedFinish.kind === "targeted_finish") {
     state.gaman = 0;
     state.lastActionWasEnemy = false;
-    resolveEjaculation(state, "self", attr, enemy.defeated ? null : enemy, targetedFinish.gamanToEnemy, events);
+    resolveEjaculation(state, "self", attr, enemy.defeated ? null : enemy, targetedFinish.gamanToEnemy, events, targetedFinish.selfHpLoss);
   } else {
     const cost = selfGamanCost(def);
     state.gaman = Math.max(0, state.gaman - cost);
@@ -350,7 +351,10 @@ export function useTodome(
   const enemy = pickTodomeTarget(state, targetUid);
   if (!enemy || !enemy.defeated) throw new Error("とどめは相手が気力0のときのみ使えます");
 
-  const events: CharmEvent[] = [{ type: "TodomeUsed", enemyUid: enemy.uid }];
+  // とどめ＝膣内中出し（docs/09 §6-1）＝挿入そのもの。処女のまま到達した場合はこの瞬間が初挿入＝処女喪失。
+  const first = state.virgin;
+  if (first) state.virgin = false;
+  const events: CharmEvent[] = [{ type: "TodomeUsed", enemyUid: enemy.uid, first }];
   enemy.qi = 0;
   const def = db.charmEnemies.get(enemy.defId);
   if (def?.joinCompanionId) {

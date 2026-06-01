@@ -38,7 +38,7 @@ export type SexEffect =
   | { kind: "weaken_attr"; amount: number } // 精神デバフ：最後に当てた属性を弱化（汚し・主導権）
   | { kind: "guard_up"; amount: number } // またがり：こゆきの守りを上げる
   | { kind: "guard_down"; amount: number } // 後ろ取り：こゆきの守りを下げる（ハイリスク）
-  | { kind: "targeted_finish"; gamanToEnemy: number }; // 狙い撃ち射精：こゆき我慢を即0にし、能動射精で敵を崩す
+  | { kind: "targeted_finish"; gamanToEnemy: number; selfHpLoss?: number }; // 狙い撃ち射精：こゆき我慢を即0にし、能動射精で敵を崩す（selfHpLoss=この射精でこゆきが負うHP。フェラ/パイズリ等「自分の被ダメが大きい射精技」用。未指定は既定値）
 
 /** 性技カード定義（docs/08 §2.6）。属性は裏管理。 */
 export interface SexCardDef {
@@ -149,7 +149,7 @@ export type CharmEvent =
   | { type: "EnemyExhausted"; enemyUid: string } // 気力0で放心
   | { type: "SextechPointGained"; total: number }
   | { type: "TodomeReady"; enemyUid: string }
-  | { type: "TodomeUsed"; enemyUid: string }
+  | { type: "TodomeUsed"; enemyUid: string; first: boolean } // first=この とどめ（中出し）が初挿入＝処女喪失を兼ねる
   | { type: "CompanionJoined"; companionId: string }
   | { type: "EnemyActed"; enemyUid: string; intentId: string }
   | { type: "StatusApplied"; status: string; x: number }

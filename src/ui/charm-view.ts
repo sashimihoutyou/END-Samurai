@@ -52,7 +52,10 @@ export function describeCharmEvent(db: ContentDB, state: CharmBattleState, ev: C
     case "TodomeReady": return `　★ ${nm(ev.enemyUid)}に『とどめ！』を刺せる`;
     case "TodomeUsed": {
       const e = state.enemies.find((x) => x.uid === ev.enemyUid);
-      const line = e ? tPick(db, `charm.todome.${e.defId}`) : null;
+      // 処女喪失を兼ねるとどめは初回専用台詞（初めて＋中出し）。無ければ通常とどめ台詞へフォールバック。
+      const line = e
+        ? (ev.first ? tPick(db, `charm.todome.${e.defId}.first`) : undefined) ?? tPick(db, `charm.todome.${e.defId}`)
+        : null;
       return line ? `▶ とどめ！\n　${line}` : `▶ とどめ！　——決着`;
     }
     case "CompanionJoined": return null; // リザルト画面で描く

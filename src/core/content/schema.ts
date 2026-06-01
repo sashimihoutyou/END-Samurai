@@ -107,7 +107,7 @@ const sexEffectSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("weaken_attr"), amount: z.number().int().positive() }),
   z.object({ kind: z.literal("guard_up"), amount: z.number().int() }),
   z.object({ kind: z.literal("guard_down"), amount: z.number().int() }),
-  z.object({ kind: z.literal("targeted_finish"), gamanToEnemy: z.number().int().nonnegative() }),
+  z.object({ kind: z.literal("targeted_finish"), gamanToEnemy: z.number().int().nonnegative(), selfHpLoss: z.number().int().nonnegative().optional() }),
 ]);
 
 export const sexCardDefSchema = z.object({
