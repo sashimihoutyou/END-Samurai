@@ -100,7 +100,7 @@ export class Game {
   onsenEvent: OnsenEvent | null = null;
   onsenPhase: OnsenPhase = "intro";
   onsenStageIndex = 0;
-  onsenErred = false; // どこかで誤ったか（誤ると indulgent 結末へ）
+  onsenScore = 0; // 好みに沿った手の累計（閾値以上で lead）
   onsenLastResultKey = ""; // 直近の選択の反応テキスト
   onsenResult: OnsenResult | null = null; // 結末（lead/indulgent）
   private onsenReturnNode: string | null = null;
@@ -397,7 +397,7 @@ export class Game {
     this.onsenReturnNode = returnNode;
     this.onsenPhase = "intro";
     this.onsenStageIndex = 0;
-    this.onsenErred = false;
+    this.onsenScore = 0;
     this.onsenLastResultKey = "";
     this.onsenResult = null;
     this.page = 0;
@@ -422,23 +422,23 @@ export class Game {
     this.render();
   }
 
-  /** ステージの選択肢を選ぶ。誤れば以後 indulgent 結末が確定する。 */
+  /** ステージの選択肢を選ぶ。スコアを加算し、反応を見せる（中断はしない）。 */
   chooseOnsen(choiceIndex: number): void {
     const stage = this.onsenStage();
     const choice = stage?.choices[choiceIndex];
     if (!choice) return;
-    if (!choice.correct) this.onsenErred = true;
+    this.onsenScore += choice.score;
     this.onsenLastResultKey = choice.resultKey;
     this.onsenPhase = "choiceResult";
     this.render();
   }
 
-  /** 選択の反応を見たあと、次段へ進むか結末へ。 */
+  /** 選択の反応を見たあと、次段へ進む。最終段なら結末へ。 */
   onsenChoiceContinue(): void {
     const ev = this.onsenEvent;
     if (!ev) return;
     const lastStage = this.onsenStageIndex >= ev.stages.length - 1;
-    if (this.onsenErred || lastStage) {
+    if (lastStage) {
       this.applyOnsenOutcome();
     } else {
       this.onsenStageIndex += 1;
@@ -447,13 +447,13 @@ export class Game {
     this.render();
   }
 
-  /** 結末を確定し、せっくすてく加算・全回復を適用する（1回だけ）。 */
+  /** 結末を確定し、せっくすてく加算（スコア比例）・全回復を適用する（1回だけ）。 */
   private applyOnsenOutcome(): void {
     const ev = this.onsenEvent;
     if (!ev) return;
-    const result = resolveOnsen(ev, this.onsenErred);
+    const result = resolveOnsen(ev, this.onsenScore);
     this.onsenResult = result;
-    if (result.outcome === "lead" && result.sextechPart) {
+    if (result.sextechGain > 0) {
       this.run.sextech[result.sextechPart] += result.sextechGain;
     }
     if (result.fullHeal) {
@@ -473,10 +473,11 @@ export class Game {
       return;
     }
     const node = this.onsenReturnNode;
+    const gained = (this.onsenResult?.sextechGain ?? 0) > 0;
     const notice =
       this.onsenResult?.outcome === "lead"
-        ? "湯あがり、心も体もほぐれた（せっくすてく獲得）"
-        : "湯あがり、すっかり蕩けて全回復した";
+        ? `湯あがり、自信と経験を積んだ${gained ? "（せっくすてく獲得）" : ""}`
+        : `湯あがり、すっかり蕩かされて全回復した${gained ? "（せっくすてく獲得）" : ""}`;
     this.onsenEvent = null;
     this.onsenResult = null;
     this.onsenReturnNode = null;

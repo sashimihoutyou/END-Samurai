@@ -322,16 +322,15 @@ export function renderOnsen(game: Game, root: HTMLElement): void {
 
   // 結末（lead / indulgent）：ページ送り
   const lead = game.onsenResult?.outcome === "lead";
+  const gain = game.onsenResult?.sextechGain ?? 0;
   const pages = tLines(db, lead ? ev.leadOutcomeKey : ev.indulgentOutcomeKey);
   const last = game.page >= pages.length - 1;
   const footer = last
-    ? lead
-      ? `<p class="result-stat">せっくすてく 身${game.run.sextech.mi}・鎬${game.run.sextech.shinogi}・切先${game.run.sextech.kissaki}　／　こゆき HP ${game.run.hp}/${game.run.maxHp}</p>`
-      : `<p class="result-stat">こゆき HP ${game.run.hp}/${game.run.maxHp}（全回復）</p>`
+    ? `<p class="result-stat">せっくすてく 身${game.run.sextech.mi}・鎬${game.run.sextech.shinogi}・切先${game.run.sextech.kissaki}${gain > 0 ? `（+${gain}）` : ""}　／　こゆき HP ${game.run.hp}/${game.run.maxHp}（全回復）</p>`
     : "";
   root.innerHTML = `
     <div class="screen narration-screen onsen">
-      <h1>${lead ? "♨ 先に、蕩かしきった" : "♨ たっぷり、蕩かされて"}</h1>
+      <h1>${lead ? "♨ 気を遣るまで、蕩かしきった" : "♨ 攻守逆転、たっぷり蕩かされて"}</h1>
       <p class="narration">${escapeHtml(pages[game.page])}</p>
       ${pageDots(game.page, pages.length)}
       ${footer}

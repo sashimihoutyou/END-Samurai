@@ -1,7 +1,10 @@
 // 温泉イベント（docs/05「温泉イベント」リメイク）。
-// こゆきの入浴中に仲間／救済者が現れ、複数段の選択でセックスへ。
-//  - 正しい選択を通し切る → 相手を先にイカせる → せっくすてく獲得（成功＝lead）。
-//  - どこかで誤ると → たっぷりねっとり相互に達して全回復（indulgent）。懲罰はない。
+// こゆきの入浴中に仲間／救済者が現れ、5段の選択でセックスへ。中断はなく必ず完走する。
+//  - 各段で相手の「好み」に近い手を選ぶほど加点（favorite=2 / acceptable=1 / off=0）。
+//  - 反応テキストの濃淡で好みを暗示する（メタな説明はしない）。
+//  - 合計が閾値以上 → 相手が気絶するまで絶頂、こゆきが自信と経験を積む（lead）。
+//  - 閾値未満 → 攻守逆転し、お豊（相手）主導でこゆきが蕩かされる（indulgent）。
+//  - せっくすてく獲得はスコア比例（floor(score / rewardDivisor)）。いずれも温泉ゆえ全回復。
 // Core層の鉄則どおり、ここは型のみ（本文・数値は data/onsen.json へ外部化）。
 
 import type { SextechState } from "./charm.js";
@@ -10,13 +13,13 @@ import type { SextechState } from "./charm.js";
 export type OnsenPartnerSource = "companion" | "rescued";
 
 export interface OnsenChoice {
-  labelKey: string; // 選択肢ラベル
-  correct: boolean; // 相手を先へ追い込む正しい一手か
-  resultKey: string; // 選択直後に出す短い反応テキスト
+  labelKey: string; // 選択肢ラベル（行為の選択）
+  score: number; // この相手がどれだけ好むか（0=off / 1=acceptable / 2=favorite）
+  resultKey: string; // 選択後に出す行為＋反応テキスト（濃淡で好みを暗示）
 }
 
 export interface OnsenStage {
-  textKey: string; // この段のナレーション
+  textKey: string; // この段の問いかけ（どう始める／何をする 等）
   choices: OnsenChoice[];
 }
 
@@ -25,17 +28,20 @@ export interface OnsenEvent {
   partnerId: string; // 相手（companion=otoyo/aoi、rescued=救済モブ）
   partnerSource: OnsenPartnerSource;
   introKey: string; // 導入ナレーション（string[]＝複数ページ可）
-  stages: OnsenStage[]; // 会話＝行為の段（順に解決）
-  rewardPart: keyof SextechState; // 成功時に伸びるせっくすてく部位（身/鎬/切先）
-  rewardPoints: number; // 成功時のせっくすてく加算
-  leadOutcomeKey: string; // 成功（相手を先にイカせた）テキスト
-  indulgentOutcomeKey: string; // 失敗（ねっとり全回復）テキスト（string[]＝長文複数段）
+  stages: OnsenStage[]; // 5段の行為（順に解決・中断なし）
+  threshold: number; // lead に必要な合計スコア
+  rewardPart: keyof SextechState; // 伸びるせっくすてく部位（身/鎬/切先）
+  rewardDivisor: number; // せっくすてく加算 = floor(totalScore / rewardDivisor)
+  leadOutcomeKey: string; // 成功（気絶絶頂・自信と経験）テキスト（string[]）
+  indulgentOutcomeKey: string; // 未達（攻守逆転・全回復）テキスト（string[]）
 }
 
 /** 温泉シーンの結末（純粋関数 resolveOnsen の戻り値）。 */
 export interface OnsenResult {
   outcome: "lead" | "indulgent";
-  sextechPart?: keyof SextechState; // lead時に伸びる部位
-  sextechGain: number; // lead時のせっくすてく加算（indulgentは0）
-  fullHeal: boolean; // 全回復するか（温泉なので両結末で true）
+  score: number; // 合計スコア
+  sextechPart: keyof SextechState; // 伸びる部位
+  sextechGain: number; // せっくすてく加算（スコア比例）
+  fullHeal: boolean; // 全回復するか（温泉なので常に true）
 }
+
