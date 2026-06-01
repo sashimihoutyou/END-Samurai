@@ -217,6 +217,7 @@ const onsenChoiceSchema = z.object({
   labelKey: z.string(),
   score: z.number().int().min(0),
   resultKey: z.string(),
+  tag: z.string().optional(),
 });
 const onsenStageSchema = z.object({
   textKey: z.string(),
@@ -233,6 +234,8 @@ export const onsenEventSchema = z.object({
   rewardDivisor: z.number().int().positive(),
   leadOutcomeKey: z.string(),
   indulgentOutcomeKey: z.string(),
+  multipliers: z.record(z.string(), z.number().positive()).optional(),
+  minRescued: z.number().int().positive().optional(),
 });
 
 // 戦闘報酬（docs/03「戦闘報酬」・docs/08 §10 ドロップ候補）。

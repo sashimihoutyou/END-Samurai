@@ -16,7 +16,7 @@ import {
   useTodome,
 } from "../core/rules/charm-battle.js";
 import { generateReward, type RewardOffer } from "../core/rules/reward.js";
-import { resolveOnsen } from "../core/rules/onsen.js";
+import { effectiveScore, resolveOnsen } from "../core/rules/onsen.js";
 import type { OnsenEvent, OnsenResult } from "../core/model/onsen.js";
 import { makeStarterDeck, makeStarterSword } from "./starter.js";
 import { describeBattleEvent, renderBattle } from "../ui/battle-view.js";
@@ -338,7 +338,7 @@ export class Game {
         break;
       }
       case "onsen": {
-        const ev = this.pickOnsen(node.onsenIds ?? []);
+        const ev = this.pickOnsen(node.onsenIds ?? [], nodeId);
         if (!ev) {
           this.advanceTo(nodeId, "湯は冷めていた……（相手がいない）");
           return;
@@ -380,16 +380,22 @@ export class Game {
 
   // ── 温泉イベント（複数段の選択式エロシーン）────────────────────
 
-  /** 出現条件を満たす最初の温泉イベントを選ぶ（救済モブは rescuedCount>0、仲間は加入済み）。 */
-  private pickOnsen(ids: string[]): OnsenEvent | null {
-    for (const id of ids) {
-      const ev = this.db.onsen.get(id);
-      if (!ev) continue;
-      if (ev.partnerSource === "rescued" && this.run.rescuedCount <= 0) continue;
-      if (ev.partnerSource === "companion" && !this.run.companions.some((c) => c.id === ev.partnerId)) continue;
-      return ev;
-    }
-    return null;
+  /**
+   * 出現条件を満たす温泉イベントから1つを抽選する。
+   * その時いる仲間（加入済み companion）と、救済した村娘（単独＝minRescued1／複数＝同2）が
+   * 候補になり、誰が来るかはランダム。決定論のためノードIDと救済人数からシードを派生させる。
+   */
+  private pickOnsen(ids: string[], nodeId: string): OnsenEvent | null {
+    const pool = ids
+      .map((id) => this.db.onsen.get(id))
+      .filter((ev): ev is OnsenEvent => {
+        if (!ev) return false;
+        if (ev.partnerSource === "rescued") return this.run.rescuedCount >= (ev.minRescued ?? 1);
+        return this.run.companions.some((c) => c.id === ev.partnerId);
+      });
+    if (pool.length === 0) return null;
+    const rng = createRng(hashSeed(`onsen:${nodeId}:${this.run.rescuedCount}`));
+    return pool[rng.int(pool.length)];
   }
 
   private beginOnsen(ev: OnsenEvent, returnNode: string): void {
@@ -424,10 +430,11 @@ export class Game {
 
   /** ステージの選択肢を選ぶ。スコアを加算し、反応を見せる（中断はしない）。 */
   chooseOnsen(choiceIndex: number): void {
+    const ev = this.onsenEvent;
     const stage = this.onsenStage();
     const choice = stage?.choices[choiceIndex];
-    if (!choice) return;
-    this.onsenScore += choice.score;
+    if (!ev || !choice) return;
+    this.onsenScore += effectiveScore(ev, choice);
     this.onsenLastResultKey = choice.resultKey;
     this.onsenPhase = "choiceResult";
     this.render();

@@ -16,6 +16,7 @@ export interface OnsenChoice {
   labelKey: string; // 選択肢ラベル（行為の選択）
   score: number; // この相手がどれだけ好むか（0=off / 1=acceptable / 2=favorite）
   resultKey: string; // 選択後に出す行為＋反応テキスト（濃淡で好みを暗示）
+  tag?: string; // 性感補正タグ（例 "foreplay" / "cowgirl" / "anal"）。event.multipliers と対応。
 }
 
 export interface OnsenStage {
@@ -34,6 +35,8 @@ export interface OnsenEvent {
   rewardDivisor: number; // せっくすてく加算 = floor(totalScore / rewardDivisor)
   leadOutcomeKey: string; // 成功（気絶絶頂・自信と経験）テキスト（string[]）
   indulgentOutcomeKey: string; // 未達（攻守逆転・全回復）テキスト（string[]）
+  multipliers?: Record<string, number>; // 性感補正（タグ→倍率）。例 葵: {foreplay:2, cowgirl:1.5, anal:1.5}
+  minRescued?: number; // partnerSource="rescued" 時、出現に必要な救済人数（既定1。複数人=2）
 }
 
 /** 温泉シーンの結末（純粋関数 resolveOnsen の戻り値）。 */
