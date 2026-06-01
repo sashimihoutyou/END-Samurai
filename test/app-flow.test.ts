@@ -81,6 +81,50 @@ describe("マップ進行の配線（田舎）", () => {
     expect(game.mapPos).toBe("c_aoi");
   });
 
+  it("むすめしかばね遭遇は「斬る！／とろかす…♡」の二択を提示する", () => {
+    const game = new Game(db, stubRoot());
+    game.enterMap();
+    game.mapPos = "c_aoi";
+    game.travelTo("c_musume");
+    expect(game.screen).toBe("event");
+    expect(game.currentEvent?.id).toBe("ev_musume");
+    expect(game.currentEvent?.choices).toHaveLength(2);
+  });
+
+  it("「斬る！」を選ぶと通常戦闘（むすめしかばね）が始まる", () => {
+    const game = new Game(db, stubRoot());
+    game.enterMap();
+    game.mapPos = "c_aoi";
+    game.travelTo("c_musume");
+    game.chooseEvent(0); // 斬る！
+    expect(game.screen).toBe("battle");
+    expect(game.screenCharm).toBe(false);
+    expect(game.battle?.enemies[0].defId).toBe("musume_shikabane");
+  });
+
+  it("「とろかす…♡」→とどめで救済者+1（加入はしない）、マップへ戻る", () => {
+    const game = new Game(db, stubRoot());
+    game.enterMap();
+    game.mapPos = "c_aoi";
+    game.travelTo("c_musume");
+    game.chooseEvent(1); // とろかす…♡
+    expect(game.screenCharm).toBe(true);
+    expect(game.charmEnemyDefId).toBe("musume_shikabane");
+
+    const before = game.run.rescuedCount;
+    game.charm!.enemies[0].qi = 0;
+    game.charm!.enemies[0].defeated = true;
+    game.charmTodome(); // 確認
+    game.charmTodome(); // 実行→勝利
+    expect(game.screen).toBe("charm_result");
+    expect(game.run.rescuedCount).toBe(before + 1);
+    expect(game.run.companions.length).toBe(0); // むすめしかばねは加入しない
+
+    game.afterCharmResult();
+    expect(game.screen).toBe("map");
+    expect(game.mapPos).toBe("c_musume");
+  });
+
   it("ボスノードはボス戦として開始する", () => {
     const game = new Game(db, stubRoot());
     game.enterMap();

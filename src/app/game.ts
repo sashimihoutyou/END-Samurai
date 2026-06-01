@@ -463,6 +463,7 @@ export class Game {
       this.run.companions.push({ id: joinId, affection: "mid" });
     }
     if (joinId) this.run.flags[`${joinId}Joined`] = true;
+    else this.run.rescuedCount += 1; // 加入しない相手（むすめしかばね等）は「とどめ！」＝救済者カウント+1（docs/04「救済者システム」）
     if (this.charmEnemyDefId === "otoyo") this.run.flags.otoyoDeflowered = true; // とどめ（中出し）で処女喪失を永続化
     this.beginCharmResult();
   }
@@ -503,8 +504,12 @@ export class Game {
     if (this.charmEnemyDefId === "otoyo") {
       this.enterMap(); // プロローグ完了→田舎マップへ
     } else if (this.activeNodeId) {
-      const joined = this.db.charmEnemies.get(this.charmEnemyDefId)?.name ?? "仲間";
-      this.advanceTo(this.activeNodeId, `${joined}が仲間に加わった`);
+      const def = this.db.charmEnemies.get(this.charmEnemyDefId);
+      // 加入する相手（葵）は仲間化、加入しない相手（むすめしかばね）は救済者として人間に戻る。
+      const notice = def?.joinCompanionId
+        ? `${def.name}が仲間に加わった`
+        : `${def?.name ?? "相手"}を救った（救済者 +1）`;
+      this.advanceTo(this.activeNodeId, notice);
     } else {
       this.enterMap();
     }

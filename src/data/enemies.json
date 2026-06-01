@@ -1,5 +1,27 @@
 [
   {
+    "id": "musume_shikabane",
+    "name": "むすめしかばね",
+    "archetype": "cyclic",
+    "hp": 13,
+    "defense": 0,
+    "charmTarget": true,
+    "intents": [
+      {
+        "id": "namameki",
+        "label": "なまめかしいよろめき",
+        "icon": "stagger",
+        "effects": [{ "kind": "damage", "amount": 3 }]
+      },
+      {
+        "id": "shinadare",
+        "label": "しなだれかかり",
+        "icon": "grab",
+        "effects": [{ "kind": "grab" }]
+      }
+    ]
+  },
+  {
     "id": "nora_inu",
     "name": "野犬",
     "archetype": "cyclic",

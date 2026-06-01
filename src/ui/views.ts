@@ -113,9 +113,15 @@ export function renderCharmResult(game: Game, root: HTMLElement): void {
          <p class="title-note">——プロローグはここまで。お豊を連れて、こゆきの旅が始まる。</p>`
       : `<p class="result-stat">お豊（鍛冶屋）／こゆき HP ${game.run.hp}/${game.run.maxHp}</p>`;
     lastLabel = "旅に出る";
-  } else {
+  } else if (db.charmEnemies.get(defId)?.joinCompanionId) {
+    // 加入する相手（葵）：仲間加入リザルト。
     pages = tLines(db, `charm.result.${defId}.join`);
     footer = `<p class="result-stat">仲間：${escapeHtml(companionLine(game))}／こゆき HP ${game.run.hp}/${game.run.maxHp}</p>`;
+    lastLabel = "旅を続ける";
+  } else {
+    // 加入しない相手（むすめしかばね）：人間に戻し、救済者としてカウント。
+    pages = tLines(db, `charm.result.${defId}.rescue`);
+    footer = `<p class="result-stat">救済者：${game.run.rescuedCount}人／こゆき HP ${game.run.hp}/${game.run.maxHp}</p>`;
     lastLabel = "旅を続ける";
   }
   const last = game.page >= pages.length - 1;
@@ -184,6 +190,8 @@ export function renderEvent(game: Game, root: HTMLElement): void {
   const db = game.db;
   const ev = game.currentEvent;
   if (!ev) return;
+  const node = game.activeNodeId ? game.findNode(game.activeNodeId) : undefined;
+  const title = node?.label ?? "遭遇";
   const pages = tLines(db, ev.introKey);
   const last = game.page >= pages.length - 1;
   const choices = last
@@ -193,7 +201,7 @@ export function renderEvent(game: Game, root: HTMLElement): void {
     : `<button id="next" class="bigbtn">次へ</button>`;
   root.innerHTML = `
     <div class="screen narration-screen">
-      <h1>中間地点・道場跡</h1>
+      <h1>${escapeHtml(title)}</h1>
       <p class="narration">${escapeHtml(pages[game.page])}</p>
       ${pageDots(game.page, pages.length)}
       <div class="map-choices">${choices}</div>
