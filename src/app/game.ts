@@ -15,6 +15,9 @@ import {
   todomeReady,
   useTodome,
 } from "../core/rules/charm-battle.js";
+import { generateReward, type RewardOffer } from "../core/rules/reward.js";
+import { resolveOnsen } from "../core/rules/onsen.js";
+import type { OnsenEvent, OnsenResult } from "../core/model/onsen.js";
 import { makeStarterDeck, makeStarterSword } from "./starter.js";
 import { describeBattleEvent, renderBattle } from "../ui/battle-view.js";
 import { describeCharmEvent, renderCharm } from "../ui/charm-view.js";
@@ -27,8 +30,10 @@ import {
   renderGameOver,
   renderMap,
   renderNoraResult,
+  renderOnsen,
   renderOpening,
   renderResult,
+  renderReward,
   renderTitle,
 } from "../ui/views.js";
 
@@ -48,8 +53,13 @@ export type ScreenName =
   | "map"
   | "event"
   | "camp"
+  | "reward"
+  | "onsen"
   | "result"
   | "gameover";
+
+/** 温泉シーンの進行フェーズ。 */
+export type OnsenPhase = "intro" | "stage" | "choiceResult" | "outcome";
 
 const RUN_SEED = 0x5a3c19; // ラン全体の基準シード。各戦闘はノードIDから派生した決定論的シードを使う。
 
@@ -86,6 +96,22 @@ export class Game {
   mapNotice = ""; // マップ画面上部に出す直近の結果（「○○を退けた」等）
   currentEvent: EventDef | null = null;
 
+  // ── 温泉イベント（docs/05 リメイク：複数段の選択式エロシーン）──
+  onsenEvent: OnsenEvent | null = null;
+  onsenPhase: OnsenPhase = "intro";
+  onsenStageIndex = 0;
+  onsenErred = false; // どこかで誤ったか（誤ると indulgent 結末へ）
+  onsenLastResultKey = ""; // 直近の選択の反応テキスト
+  onsenResult: OnsenResult | null = null; // 結末（lead/indulgent）
+  private onsenReturnNode: string | null = null;
+
+  // ── 戦闘報酬（docs/03）──
+  rewardOffer: RewardOffer | null = null;
+  rewardRevealed = false; // 中央ブラインド枠を開いたか
+  private rewardReturnNode: string | null = null; // 報酬後に戻るノード
+  private rewardNotice = ""; // 報酬後にマップへ出す結果文
+  private cardSeq = 0; // 入手カードの個体ID採番
+
   /** charm 画面を描画中か（battle 画面と区別するための内部フラグ）。 */
   screenCharm = false;
   /** charm UI：とどめ確認モードか（最終確認の1タップ） */
@@ -110,6 +136,7 @@ export class Game {
       hp: base,
       maxHp: base,
       sword: makeStarterSword(),
+      costume: "normal",
       deck: makeStarterDeck(),
       companions: [],
       sextech: { mi: 0, shinogi: 0, kissaki: 0 },
@@ -136,6 +163,11 @@ export class Game {
     this.activeNodeId = null;
     this.mapNotice = "";
     this.currentEvent = null;
+    this.rewardOffer = null;
+    this.rewardReturnNode = null;
+    this.onsenEvent = null;
+    this.onsenResult = null;
+    this.onsenReturnNode = null;
     this.screenCharm = false;
     this.screen = "title";
     this.render();
@@ -184,6 +216,8 @@ export class Game {
         hp: this.run.hp,
         maxHp: this.run.maxHp,
         enemyDefIds,
+        costume: this.run.costume,
+        companions: this.run.companions,
       },
       this.battleRng,
     );
@@ -303,6 +337,15 @@ export class Game {
         this.render();
         break;
       }
+      case "onsen": {
+        const ev = this.pickOnsen(node.onsenIds ?? []);
+        if (!ev) {
+          this.advanceTo(nodeId, "湯は冷めていた……（相手がいない）");
+          return;
+        }
+        this.beginOnsen(ev, nodeId);
+        break;
+      }
       case "rest": {
         const heal = node.heal ?? 0;
         const before = this.run.hp;
@@ -330,8 +373,115 @@ export class Game {
   applyCamp(): void {
     if (!this.activeNodeId) return;
     this.run.sword = makeStarterSword(); // 全部位「新品同様」へ（完全修繕）
+    this.run.costume = "normal"; // 衣装も繕う（docs/05「野営地の鍛冶屋で衣装修繕」）
     this.run.hp = Math.min(this.run.maxHp, this.run.hp + 5);
-    this.advanceTo(this.activeNodeId, "刀を研ぎ直し、傷を癒した");
+    this.advanceTo(this.activeNodeId, "刀を研ぎ直し、衣を繕い、傷を癒した");
+  }
+
+  // ── 温泉イベント（複数段の選択式エロシーン）────────────────────
+
+  /** 出現条件を満たす最初の温泉イベントを選ぶ（救済モブは rescuedCount>0、仲間は加入済み）。 */
+  private pickOnsen(ids: string[]): OnsenEvent | null {
+    for (const id of ids) {
+      const ev = this.db.onsen.get(id);
+      if (!ev) continue;
+      if (ev.partnerSource === "rescued" && this.run.rescuedCount <= 0) continue;
+      if (ev.partnerSource === "companion" && !this.run.companions.some((c) => c.id === ev.partnerId)) continue;
+      return ev;
+    }
+    return null;
+  }
+
+  private beginOnsen(ev: OnsenEvent, returnNode: string): void {
+    this.onsenEvent = ev;
+    this.onsenReturnNode = returnNode;
+    this.onsenPhase = "intro";
+    this.onsenStageIndex = 0;
+    this.onsenErred = false;
+    this.onsenLastResultKey = "";
+    this.onsenResult = null;
+    this.page = 0;
+    this.screen = "onsen";
+    this.render();
+  }
+
+  /** 現在の温泉ステージ。 */
+  onsenStage() {
+    return this.onsenEvent?.stages[this.onsenStageIndex];
+  }
+
+  /** 導入ページ送りの「次へ」終端でステージへ。 */
+  onsenIntroNext(total: number): void {
+    if (this.page < total - 1) {
+      this.page += 1;
+      this.render();
+      return;
+    }
+    this.onsenPhase = "stage";
+    this.page = 0;
+    this.render();
+  }
+
+  /** ステージの選択肢を選ぶ。誤れば以後 indulgent 結末が確定する。 */
+  chooseOnsen(choiceIndex: number): void {
+    const stage = this.onsenStage();
+    const choice = stage?.choices[choiceIndex];
+    if (!choice) return;
+    if (!choice.correct) this.onsenErred = true;
+    this.onsenLastResultKey = choice.resultKey;
+    this.onsenPhase = "choiceResult";
+    this.render();
+  }
+
+  /** 選択の反応を見たあと、次段へ進むか結末へ。 */
+  onsenChoiceContinue(): void {
+    const ev = this.onsenEvent;
+    if (!ev) return;
+    const lastStage = this.onsenStageIndex >= ev.stages.length - 1;
+    if (this.onsenErred || lastStage) {
+      this.applyOnsenOutcome();
+    } else {
+      this.onsenStageIndex += 1;
+      this.onsenPhase = "stage";
+    }
+    this.render();
+  }
+
+  /** 結末を確定し、せっくすてく加算・全回復を適用する（1回だけ）。 */
+  private applyOnsenOutcome(): void {
+    const ev = this.onsenEvent;
+    if (!ev) return;
+    const result = resolveOnsen(ev, this.onsenErred);
+    this.onsenResult = result;
+    if (result.outcome === "lead" && result.sextechPart) {
+      this.run.sextech[result.sextechPart] += result.sextechGain;
+    }
+    if (result.fullHeal) {
+      this.run.hp = this.run.maxHp; // HP全回復
+      this.run.sword = makeStarterSword(); // 刀も全修繕（温泉効果）
+      this.run.costume = "normal"; // 衣も整う
+    }
+    this.onsenPhase = "outcome";
+    this.page = 0;
+  }
+
+  /** 結末テキストのページ送り。終端で湯から上がってマップへ。 */
+  onsenOutcomeNext(total: number): void {
+    if (this.page < total - 1) {
+      this.page += 1;
+      this.render();
+      return;
+    }
+    const node = this.onsenReturnNode;
+    const notice =
+      this.onsenResult?.outcome === "lead"
+        ? "湯あがり、心も体もほぐれた（せっくすてく獲得）"
+        : "湯あがり、すっかり蕩けて全回復した";
+    this.onsenEvent = null;
+    this.onsenResult = null;
+    this.onsenReturnNode = null;
+    if (node) this.advanceTo(node, notice);
+    else this.enterMap();
   }
 
   /** イベントの選択肢を実行する。 */
@@ -397,8 +547,9 @@ export class Game {
   private afterNormalUpdate(): void {
     if (!this.battle) return;
     if (this.battle.phase === "won") {
-      this.run.hp = this.battle.hp; // HP・刀の状態をランへ引き継ぐ（1ラン通し）
+      this.run.hp = this.battle.hp; // HP・刀・衣装の状態をランへ引き継ぐ（1ラン通し）
       this.run.sword = this.battle.sword;
+      this.run.costume = this.battle.costume;
       if (this.activeNodeId === null) {
         this.screen = "nora_result"; // プロローグ野犬戦
       } else {
@@ -407,7 +558,7 @@ export class Game {
           this.screen = "result"; // 大しかばね撃破＝クリア
         } else {
           const names = this.battle.enemies.map((e) => e.name).join("・");
-          this.advanceTo(this.activeNodeId, `${names}を退けた`);
+          this.offerReward(this.activeNodeId, `${names}を退けた`); // 戦闘報酬（3択）→マップ
           return;
         }
       }
@@ -416,6 +567,64 @@ export class Game {
       return;
     }
     this.render();
+  }
+
+  // ── 戦闘報酬（3択）────────────────────────────────────────────
+
+  /** 通常戦闘勝利後、ドロップ候補から3枚提示する（docs/03「戦闘報酬」）。 */
+  private offerReward(returnNode: string, notice: string): void {
+    this.rewardOffer = generateReward(this.db.rewards.dropPool, this.battleRng);
+    this.rewardRevealed = false;
+    this.rewardReturnNode = returnNode;
+    this.rewardNotice = notice;
+    this.screen = "reward";
+    this.render();
+  }
+
+  /** 報酬カードの中身（ブラインド枠はrevealするまで非表示）。UI用。 */
+  rewardCardName(index: number): string | null {
+    const id = this.rewardOffer?.cardIds[index];
+    if (!id) return null;
+    if (index === this.rewardOffer!.blindIndex && !this.rewardRevealed) return null; // ブラインド
+    return this.db.cards.get(id)?.name ?? id;
+  }
+
+  /** ブラインド枠を開く（1タップ目）。 */
+  revealReward(): void {
+    if (!this.rewardOffer) return;
+    this.rewardRevealed = true;
+    this.render();
+  }
+
+  /** 提示カードの1枚をデッキへ加える。 */
+  chooseReward(index: number): void {
+    const id = this.rewardOffer?.cardIds[index];
+    if (!id) return;
+    if (index === this.rewardOffer!.blindIndex && !this.rewardRevealed) {
+      this.revealReward(); // ブラインドは一度開いてから選ぶ
+      return;
+    }
+    const def = this.db.cards.get(id);
+    this.cardSeq += 1;
+    const inst = def?.uses != null
+      ? { uid: `${id}@drop${this.cardSeq}`, defId: id, usesLeft: def.uses }
+      : { uid: `${id}@drop${this.cardSeq}`, defId: id };
+    this.run.deck.push(inst);
+    const name = def?.name ?? id;
+    this.finishReward(`${this.rewardNotice}（${name}を入手）`);
+  }
+
+  /** 報酬を受け取らずに進む（デッキ膨張防止）。 */
+  skipReward(): void {
+    this.finishReward(this.rewardNotice);
+  }
+
+  private finishReward(notice: string): void {
+    const node = this.rewardReturnNode;
+    this.rewardOffer = null;
+    this.rewardReturnNode = null;
+    if (node) this.advanceTo(node, notice);
+    else this.enterMap();
   }
 
   // ── とろかしバトルの操作 ────────────────────────────────────
@@ -461,8 +670,15 @@ export class Game {
     const joinId = def?.joinCompanionId;
     if (joinId && !this.run.companions.some((c) => c.id === joinId)) {
       this.run.companions.push({ id: joinId, affection: "mid" });
+      // 仲間アクティブカードをデッキへ固定投入（docs/03・08 §9「常にデッキに固定投入」）。
+      const activeId = this.db.companions.get(joinId)?.activeCardId;
+      if (activeId && !this.run.deck.some((c) => c.defId === activeId)) {
+        this.cardSeq += 1;
+        this.run.deck.push({ uid: `${activeId}@comp${this.cardSeq}`, defId: activeId });
+      }
     }
     if (joinId) this.run.flags[`${joinId}Joined`] = true;
+    else this.run.rescuedCount += 1; // 加入しない相手（むすめしかばね等）は「とどめ！」＝救済者カウント+1（docs/04「救済者システム」）
     if (this.charmEnemyDefId === "otoyo") this.run.flags.otoyoDeflowered = true; // とどめ（中出し）で処女喪失を永続化
     this.beginCharmResult();
   }
@@ -503,8 +719,12 @@ export class Game {
     if (this.charmEnemyDefId === "otoyo") {
       this.enterMap(); // プロローグ完了→田舎マップへ
     } else if (this.activeNodeId) {
-      const joined = this.db.charmEnemies.get(this.charmEnemyDefId)?.name ?? "仲間";
-      this.advanceTo(this.activeNodeId, `${joined}が仲間に加わった`);
+      const def = this.db.charmEnemies.get(this.charmEnemyDefId);
+      // 加入する相手（葵）は仲間化、加入しない相手（むすめしかばね）は救済者として人間に戻る。
+      const notice = def?.joinCompanionId
+        ? `${def.name}が仲間に加わった`
+        : `${def?.name ?? "相手"}を救った（救済者 +1）`;
+      this.advanceTo(this.activeNodeId, notice);
     } else {
       this.enterMap();
     }
@@ -546,6 +766,8 @@ export class Game {
       case "map": renderMap(this, this.root); break;
       case "event": renderEvent(this, this.root); break;
       case "camp": renderCamp(this, this.root); break;
+      case "reward": renderReward(this, this.root); break;
+      case "onsen": renderOnsen(this, this.root); break;
       case "result": renderResult(this, this.root); break;
       case "gameover": renderGameOver(this, this.root); break;
     }

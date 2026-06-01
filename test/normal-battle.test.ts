@@ -46,23 +46,24 @@ describe("通常戦闘ターン構造（docs/01）", () => {
     expect(state.ap).toBe(apBefore); // 元のstateは不変
   });
 
-  it("ターン終了で野犬が噛みつき、HP4減少・次ターンでAP回復", () => {
+  it("ターン終了で野犬が噛みつき、鍔基礎防御で1だけ通る・次ターンでAP回復", () => {
     const deck = [card("ukeru", 1), card("mikiru", 1)];
     const { state } = startBattle(db, setup(deck), createRng(3));
+    expect(state.blockPool).toBe(3); // 鍔基礎防御3が毎ターン充填される（docs/01）
     const r = endTurn(db, state, createRng(3));
-    expect(r.state.hp).toBe(26); // 30 - 4（噛みつき、防御なし）
+    expect(r.state.hp).toBe(29); // 30 - (噛みつき4 - 鍔基礎防御3)
     expect(r.state.turn).toBe(2);
     expect(r.state.ap).toBe(4);
     expect(r.state.phase).toBe("player");
   });
 
-  it("受けるで防御値を積むと被ダメージが軽減される", () => {
+  it("受けるで防御値を積むと被ダメージを完全に防げる", () => {
     const deck = [card("ukeru", 1)];
     const { state } = startBattle(db, setup(deck), createRng(5));
     const afterBlock = playCard(db, state, "ukeru-1", null, createRng(5));
-    expect(afterBlock.state.blockPool).toBe(3);
+    expect(afterBlock.state.blockPool).toBe(6); // 鍔基礎防御3 ＋ 受ける3
     const r = endTurn(db, afterBlock.state, createRng(5));
-    expect(r.state.hp).toBe(29); // 30 - (4-3)
+    expect(r.state.hp).toBe(30); // 噛みつき4 < 防御値6 → 無傷
   });
 
   it("見切るで次の敵攻撃を完全回避する", () => {

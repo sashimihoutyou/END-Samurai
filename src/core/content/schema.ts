@@ -35,6 +35,8 @@ export const swordPartStagesSchema = z.object({
   stages: z.array(swordStageSchema).nonempty(),
 });
 
+const statusId = z.enum(["poison", "bleed", "stun"]);
+
 const cardEffectSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("attack"), multiplier: z.number(), ignoreDefense: z.boolean().optional() }),
   z.object({ kind: z.literal("fixed_damage"), amount: z.number().int(), ignoreDefense: z.boolean().optional() }),
@@ -42,6 +44,14 @@ const cardEffectSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("dodge_next") }),
   z.object({ kind: z.literal("repair_part"), part: swordPart, cap: z.string().optional() }),
   z.object({ kind: z.literal("heal"), amount: z.number().int().positive() }),
+  z.object({ kind: z.literal("enemy_defense_down"), amount: z.number().int().positive() }),
+  z.object({ kind: z.literal("self_degrade"), part: swordPart, stages: z.number().int().positive().optional() }),
+  z.object({ kind: z.literal("apply_status"), status: statusId, x: z.number().int().positive(), toTarget: z.boolean() }),
+  z.object({ kind: z.literal("buff_attack"), amount: z.number().int() }),
+  z.object({ kind: z.literal("buff_defense"), amount: z.number().int() }),
+  z.object({ kind: z.literal("buff_combo"), amount: z.number() }),
+  z.object({ kind: z.literal("ap_discount"), amount: z.number().int().positive() }),
+  z.object({ kind: z.literal("nullify_degrade"), count: z.number().int().positive() }),
 ]);
 
 const cardRequirementSchema = z.discriminatedUnion("kind", [
@@ -59,11 +69,20 @@ export const cardDefSchema = z.object({
   effects: z.array(cardEffectSchema),
   requirements: z.array(cardRequirementSchema).optional(),
   uses: z.number().int().positive().optional(),
+  upgradeId: z.string().optional(),
+});
+
+// 同行仲間（docs/03「仲間スキル」）。
+export const companionDefSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  activeCardId: z.string(),
+  passive: z.enum(["battle_start_defense", "battle_start_upgrade"]),
 });
 
 const enemyEffectSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("damage"), amount: z.number().int() }),
-  z.object({ kind: z.literal("apply_status"), status: z.string(), x: z.number().int() }),
+  z.object({ kind: z.literal("apply_status"), status: statusId, x: z.number().int().positive() }),
   z.object({ kind: z.literal("degrade_part"), part: swordPart, chance: z.number() }),
   z.object({ kind: z.literal("grab") }),
 ]);
@@ -162,12 +181,13 @@ export const textSchema = z.record(z.union([z.string(), z.array(z.string())]));
 
 const mapNodeSchema = z.object({
   id: z.string(),
-  type: z.enum(["start", "battle", "boss", "camp", "rest", "charm_encounter", "event"]),
+  type: z.enum(["start", "battle", "boss", "camp", "rest", "charm_encounter", "event", "onsen"]),
   label: z.string(),
   next: z.array(z.string()),
   textKey: z.string().optional(),
   enemyGroup: z.array(z.string()).optional(),
   eventId: z.string().optional(),
+  onsenIds: z.array(z.string()).optional(),
   heal: z.number().int().positive().optional(),
 });
 
@@ -191,6 +211,34 @@ export const eventDefSchema = z.object({
   choices: z.array(z.object({ labelKey: z.string(), outcome: eventOutcomeSchema })).nonempty(),
 });
 
+// 温泉イベント（docs/05 リメイク）。複数段の選択式エロシーン。
+const sextechPart = z.enum(["mi", "shinogi", "kissaki"]);
+const onsenChoiceSchema = z.object({
+  labelKey: z.string(),
+  correct: z.boolean(),
+  resultKey: z.string(),
+});
+const onsenStageSchema = z.object({
+  textKey: z.string(),
+  choices: z.array(onsenChoiceSchema).min(2),
+});
+export const onsenEventSchema = z.object({
+  id: z.string(),
+  partnerId: z.string(),
+  partnerSource: z.enum(["companion", "rescued"]),
+  introKey: z.string(),
+  stages: z.array(onsenStageSchema).nonempty(),
+  rewardPart: sextechPart,
+  rewardPoints: z.number().int().positive(),
+  leadOutcomeKey: z.string(),
+  indulgentOutcomeKey: z.string(),
+});
+
+// 戦闘報酬（docs/03「戦闘報酬」・docs/08 §10 ドロップ候補）。
+export const rewardsSchema = z.object({
+  dropPool: z.array(z.string()).nonempty(), // 田舎で入手しうるカードID
+});
+
 export const contentSchema = z.object({
   combat: combatConfigSchema,
   swordStages: z.array(swordPartStagesSchema).length(3),
@@ -200,6 +248,9 @@ export const contentSchema = z.object({
   charmEnemies: z.array(charmEnemyDefSchema).nonempty(),
   maps: z.array(mapDefSchema).nonempty(),
   events: z.array(eventDefSchema).nonempty(),
+  onsen: z.array(onsenEventSchema).nonempty(),
+  companions: z.array(companionDefSchema).nonempty(),
+  rewards: rewardsSchema,
   text: textSchema,
 });
 

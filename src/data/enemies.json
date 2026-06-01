@@ -1,5 +1,30 @@
 [
   {
+    "id": "musume_shikabane",
+    "name": "むすめしかばね",
+    "archetype": "cyclic",
+    "hp": 13,
+    "defense": 0,
+    "charmTarget": true,
+    "intents": [
+      {
+        "id": "kakitsume",
+        "label": "爪を立てる（出血）",
+        "icon": "bleed",
+        "effects": [
+          { "kind": "damage", "amount": 5 },
+          { "kind": "apply_status", "status": "bleed", "x": 2 }
+        ]
+      },
+      {
+        "id": "shinadare",
+        "label": "しなだれかかり",
+        "icon": "grab",
+        "effects": [{ "kind": "grab" }]
+      }
+    ]
+  },
+  {
     "id": "nora_inu",
     "name": "野犬",
     "archetype": "cyclic",

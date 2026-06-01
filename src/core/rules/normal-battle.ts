@@ -1,15 +1,18 @@
 import type { CardDef, CardInstance } from "../model/card.js";
 import type { EnemyInstance } from "../model/enemy.js";
+import type { StatusId, StatusInstance } from "../model/status.js";
 import type { SwordPart, SwordState } from "../model/sword.js";
-import type { BattleEvent, BattleState } from "../model/battle-state.js";
+import type { BattleEvent, BattleState, Costume } from "../model/battle-state.js";
 import type { Rng } from "../rng/rng.js";
 import { getStage, type ContentDB } from "../content/loader.js";
 import {
+  baseDefense,
   bladeAttackPower,
   cardApCost,
   comboRate,
   computeAttackDamage,
   computeFixedDamage,
+  costumeComboBonus,
 } from "./damage.js";
 
 // 通常戦闘（HP戦）のターン構造。docs/01「ターン構造」に対応。
@@ -24,6 +27,60 @@ export interface BattleSetup {
   hp: number;
   maxHp: number;
   enemyDefIds: string[];
+  costume?: Costume; // 衣装破損段階（省略時 normal）。docs/05
+  companions?: { id: string; affection: "low" | "mid" | "high" }[]; // 同行仲間（戦闘開始時パッシブ）。docs/03
+}
+
+const AFFECTION_DEFENSE: Record<"low" | "mid" | "high", number> = { low: 1, mid: 2, high: 3 };
+const AFFECTION_UPGRADE_COUNT: Record<"low" | "mid" | "high", number> = { low: 1, mid: 1, high: 2 };
+
+/** 状態異常を付与する。毒＝magnitude非スタック・持続リセット／出血＝スタック加算（docs/01「状態異常」）。 */
+function addStatus(list: StatusInstance[], id: StatusId, x: number): void {
+  if (id === "bleed") {
+    const cur = list.find((s) => s.id === "bleed");
+    if (cur) cur.x += x;
+    else list.push({ id, x, turns: Number.MAX_SAFE_INTEGER }); // 出血はxの自然減衰で消える（持続ターン無制限）
+  } else if (id === "poison") {
+    const cur = list.find((s) => s.id === "poison");
+    if (cur) {
+      cur.x = Math.max(cur.x, x);
+      cur.turns = 3; // 持続リセット
+    } else {
+      list.push({ id, x, turns: 3 });
+    }
+  } else {
+    // 気絶：次の自分の行動を1回スキップ
+    list.push({ id: "stun", x: 1, turns: 1 });
+  }
+}
+
+function poisonTotal(list: StatusInstance[]): number {
+  return list.filter((s) => s.id === "poison").reduce((sum, s) => sum + s.x, 0);
+}
+
+/** 出血DoTを処理し、与えたダメージを返す（xを半減し、0は除去）。防御無視（docs/01）。 */
+function tickBleed(list: StatusInstance[]): number {
+  let dmg = 0;
+  for (const s of list) if (s.id === "bleed") dmg += s.x;
+  if (dmg === 0) return 0;
+  for (const s of list) if (s.id === "bleed") s.x = Math.floor(s.x / 2);
+  return dmg;
+}
+
+function removeDeadStatuses(list: StatusInstance[]): StatusInstance[] {
+  return list.filter((s) => !(s.id === "bleed" && s.x <= 0));
+}
+
+/** 衣装破損の段階進行（docs/05）。HPに通った被ダメが現在HPの30%以上で1段進む。 */
+function escalateCostume(state: BattleState, hpBefore: number, hpLoss: number, events: BattleEvent[]): void {
+  if (hpLoss <= 0 || hpLoss < Math.ceil(hpBefore * 0.3)) return;
+  if (state.costume === "normal") {
+    state.costume = "damaged";
+    events.push({ type: "CostumeChanged", to: "damaged" });
+  } else if (state.costume === "damaged") {
+    state.costume = "broken";
+    events.push({ type: "CostumeChanged", to: "broken" });
+  }
 }
 
 interface Result {
@@ -52,6 +109,7 @@ function makeEnemyInstance(db: ContentDB, defId: string, index: number): EnemyIn
     archetype: def.archetype,
     intents: def.intents,
     intentIndex: 0,
+    statuses: [],
   };
 }
 
@@ -76,11 +134,12 @@ export function startBattle(db: ContentDB, setup: BattleSetup, rng: Rng): Result
     kind: "normal",
     enemies: setup.enemyDefIds.map((id, i) => makeEnemyInstance(db, id, i)),
     hand: [],
-    drawPile: rng.shuffle(setup.deck),
+    // デッキ個体を複製して持ち込む（葵パッシブの一時置換・回数消費が run.deck を汚さないように）。
+    drawPile: rng.shuffle(setup.deck).map((c) => ({ ...c })),
     discardPile: [],
     ap: apMax,
     apMax,
-    blockPool: 0,
+    blockPool: baseDefense(db, setup.sword, setup.costume ?? "normal"), // 鍔基礎防御＋衣装補正を毎ターンの防御プールに充填（docs/01「鍔の基礎防御値＋積んだ防御値」）
     bonusPools: { attack: 0, defense: 0, comboRate: 0 },
     hp: setup.hp,
     maxHp: setup.maxHp,
@@ -91,10 +150,51 @@ export function startBattle(db: ContentDB, setup: BattleSetup, rng: Rng): Result
     grabbedBy: null,
     pinned: false,
     braceChoice: "ukeru",
+    statuses: [],
+    costume: setup.costume ?? "normal",
+    apDiscount: 0,
+    degradeShield: 0,
+    companionUsed: [],
     phase: "player",
   };
   drawToHandLimit(state, db, rng);
-  return { state, events: [{ type: "TurnStarted", turn: 1 }] };
+  const events: BattleEvent[] = [{ type: "TurnStarted", turn: 1 }];
+  applyCompanionPassives(db, state, setup.companions ?? [], events);
+  return { state, events };
+}
+
+/** 戦闘開始時の仲間パッシブ（docs/03「仲間スキル」）。お豊＝防御値＋／葵＝手札の技を上位化。 */
+function applyCompanionPassives(
+  db: ContentDB,
+  state: BattleState,
+  companions: { id: string; affection: "low" | "mid" | "high" }[],
+  events: BattleEvent[],
+): void {
+  for (const c of companions) {
+    const def = db.companions.get(c.id);
+    if (!def) continue;
+    if (def.passive === "battle_start_defense") {
+      // 鍛えの目：防御値ボーナス＋（毎ターンの防御プールへ充填される）。
+      const amount = AFFECTION_DEFENSE[c.affection];
+      state.bonusPools.defense += amount;
+      state.blockPool += amount; // 初回ターン分も即時反映
+      events.push({ type: "CompanionBuff", companionId: c.id, label: `鍛えの目：防御値+${amount}` });
+    } else if (def.passive === "battle_start_upgrade") {
+      // 見取り稽古：手札の技カードを1ランク上へ一時置換（affectionで枚数）。
+      let remaining = AFFECTION_UPGRADE_COUNT[c.affection];
+      for (const inst of state.hand) {
+        if (remaining <= 0) break;
+        const cd = db.cards.get(inst.defId);
+        if (cd?.category === "skill" && cd.upgradeId && db.cards.has(cd.upgradeId)) {
+          const from = inst.defId;
+          inst.defId = cd.upgradeId; // この戦闘限り（run.deck の個体は別物なので残らない）
+          events.push({ type: "HandUpgraded", fromCardId: from, toCardId: inst.defId });
+          remaining -= 1;
+        }
+      }
+      events.push({ type: "CompanionBuff", companionId: c.id, label: "見取り稽古" });
+    }
+  }
 }
 
 // ── 刀部位の段階操作（修繕・部位デバフ）──────────────────────────
@@ -153,7 +253,9 @@ export function canPlayCard(db: ContentDB, state: BattleState, cardUid: string):
   const inst = state.hand.find((c) => c.uid === cardUid);
   if (!inst) return false;
   const def = cardDef(db, inst);
-  if (state.ap < cardApCost(db, def, state.sword)) return false;
+  // 仲間アクティブは1戦闘1回（使用後はその戦闘中グレーアウト）。docs/03。
+  if (def.category === "companion_active" && state.companionUsed.includes(def.id)) return false;
+  if (state.ap < cardApCost(db, def, state.sword, state.costume, state.apDiscount)) return false;
   return meetsRequirements(db, def, state);
 }
 
@@ -178,7 +280,9 @@ function applyDamage(state: BattleState, enemyUid: string, amount: number, event
 }
 
 function tryCombo(db: ContentDB, state: BattleState, lastTargetUid: string, basePower: number, multiplier: number, events: BattleEvent[], rng: Rng): void {
-  const rate = Math.min(comboRate(db, state.sword, Math.min(state.bonusPools.comboRate, COMBO_RATE_CAP)), 0.5);
+  // 連撃率ボーナス＝プール＋衣装大破(+5%)。上限COMBO_RATE_CAP（docs/01）。柄基礎と合算後さらに0.5で頭打ち。
+  const bonus = Math.min(state.bonusPools.comboRate + costumeComboBonus(state.costume), COMBO_RATE_CAP);
+  const rate = Math.min(comboRate(db, state.sword, bonus), 0.5);
   if (!rng.chance(rate)) return;
   // 対象：最後に攻撃した敵。倒していたら最も左の生存敵へオートターゲット（docs/01）。
   let target = state.enemies.find((e) => e.uid === lastTargetUid && e.hp > 0);
@@ -197,7 +301,10 @@ export function playCard(db: ContentDB, input: BattleState, cardUid: string, tar
   if (!inst) throw new Error(`手札にカードがありません: ${cardUid}`);
   const def = cardDef(db, inst);
 
-  const cost = cardApCost(db, def, state.sword);
+  if (def.category === "companion_active" && state.companionUsed.includes(def.id)) {
+    throw new Error("この仲間アクティブはこの戦闘で使用済みです");
+  }
+  const cost = cardApCost(db, def, state.sword, state.costume, state.apDiscount);
   if (state.ap < cost) throw new Error("APが足りません");
   if (!meetsRequirements(db, def, state)) throw new Error("使用条件を満たしていません");
 
@@ -228,8 +335,35 @@ export function playCard(db: ContentDB, input: BattleState, cardUid: string, tar
         break;
       }
       case "block": {
-        state.blockPool += effect.amount + state.bonusPools.defense;
-        events.push({ type: "BlockGained", amount: effect.amount + state.bonusPools.defense });
+        // 防御値ボーナス（お豊パッシブ・打ち直し）は毎ターンの防御プール充填に含むため、ここでは二重加算しない。
+        state.blockPool += effect.amount;
+        events.push({ type: "BlockGained", amount: effect.amount });
+        break;
+      }
+      case "buff_attack": {
+        state.bonusPools.attack += effect.amount;
+        events.push({ type: "CompanionBuff", companionId: def.id, label: `攻撃力+${effect.amount}` });
+        break;
+      }
+      case "buff_defense": {
+        state.bonusPools.defense += effect.amount;
+        state.blockPool += effect.amount; // このターン分も即時反映
+        events.push({ type: "CompanionBuff", companionId: def.id, label: `防御値+${effect.amount}` });
+        break;
+      }
+      case "buff_combo": {
+        state.bonusPools.comboRate += effect.amount;
+        events.push({ type: "CompanionBuff", companionId: def.id, label: `連撃率+${Math.round(effect.amount * 100)}%` });
+        break;
+      }
+      case "ap_discount": {
+        state.apDiscount += effect.amount;
+        events.push({ type: "CompanionBuff", companionId: def.id, label: `技のAP-${effect.amount}` });
+        break;
+      }
+      case "nullify_degrade": {
+        state.degradeShield += effect.count;
+        events.push({ type: "CompanionBuff", companionId: def.id, label: `刀デバフ無効化×${effect.count}` });
         break;
       }
       case "dodge_next": {
@@ -248,12 +382,47 @@ export function playCard(db: ContentDB, input: BattleState, cardUid: string, tar
         events.push({ type: "Healed", amount: state.hp - before });
         break;
       }
+      case "enemy_defense_down": {
+        // 崩し（docs/01「崩し」）：対象の防御値を実数値で下げる（下限0・この戦闘中持続）。
+        for (const t of resolveAttackTargets(state, def.target, targetUid)) {
+          const before = t.defense;
+          t.defense = Math.max(0, t.defense - effect.amount);
+          if (t.defense !== before) events.push({ type: "EnemyDefenseDown", enemyUid: t.uid, amount: before - t.defense });
+        }
+        break;
+      }
+      case "self_degrade": {
+        // 自傷コスト（柄打ち・捨て身）：自分の指定部位を低下させる。
+        const times = effect.stages ?? 1;
+        for (let i = 0; i < times; i++) {
+          const d = degradePart(db, state.sword, effect.part);
+          if (d) events.push({ type: "PartDegraded", part: effect.part, from: d.from, to: d.to });
+        }
+        break;
+      }
+      case "apply_status": {
+        // 出血・気絶等の付与（toTarget=敵へ／false=こゆきへ）。経過処理は endTurn。
+        if (effect.toTarget) {
+          for (const t of resolveAttackTargets(state, def.target, targetUid)) {
+            addStatus(t.statuses, effect.status, effect.x);
+            events.push({ type: "StatusApplied", status: effect.status, x: effect.x, toKoyuki: false, enemyUid: t.uid });
+          }
+        } else {
+          addStatus(state.statuses, effect.status, effect.x);
+          events.push({ type: "StatusApplied", status: effect.status, x: effect.x, toKoyuki: true, enemyUid: null });
+        }
+        break;
+      }
     }
   }
 
-  // 使用済みカードの後始末。道具（uses持ち）は回数を1減らし、残れば捨て札へ・0なら破棄（デッキから消滅）。
+  // 使用済みカードの後始末。
   state.hand = state.hand.filter((c) => c.uid !== cardUid);
-  if (def.uses != null) {
+  if (def.category === "companion_active") {
+    // 仲間アクティブ：この戦闘では再使用不可（捨て札にも山札にも戻さない＝再ドローされない）。
+    // 戦闘終了後は run.deck 側の個体が残るため自然にデッキへ戻る（docs/03「戦闘後デッキ復帰」）。
+    state.companionUsed.push(def.id);
+  } else if (def.uses != null) {
     const left = (inst.usesLeft ?? def.uses) - 1;
     if (left > 0) {
       inst.usesLeft = left;
@@ -301,6 +470,13 @@ export function endTurn(db: ContentDB, input: BattleState, rng: Rng): Result {
 
   for (const enemy of state.enemies) {
     if (enemy.hp <= 0) continue;
+    // 気絶：この敵は行動をスキップ（予告は進めない＝次ターンに同じ予告を実行）。docs/01「気絶」。
+    const stun = enemy.statuses.find((s) => s.id === "stun");
+    if (stun) {
+      enemy.statuses = enemy.statuses.filter((s) => s.id !== "stun");
+      events.push({ type: "StunSkipped", enemyUid: enemy.uid });
+      continue;
+    }
     const intent = enemy.intents[enemy.intentIndex];
     events.push({ type: "EnemyActed", enemyUid: enemy.uid, intentId: intent.id });
 
@@ -323,9 +499,12 @@ export function endTurn(db: ContentDB, input: BattleState, rng: Rng): Result {
         const blocked = Math.min(state.blockPool, damage);
         state.blockPool -= blocked;
         const hpLoss = damage - blocked;
+        const hpBefore = state.hp;
         state.hp = Math.max(0, state.hp - hpLoss);
         penetrated = hpLoss > 0;
         events.push({ type: "DamageTaken", amount: damage, blocked, dodged: false });
+        // 衣装破損：1回の被ダメージ（HPに通った分）が現在HPの30%以上なら段階が進む（docs/05）。
+        escalateCostume(state, hpBefore, hpLoss, events);
       }
     }
 
@@ -335,6 +514,10 @@ export function endTurn(db: ContentDB, input: BattleState, rng: Rng): Result {
         const safe = (inasu && telegraph === eff.part) || dodged || (damage > 0 && !penetrated);
         if (safe) {
           events.push({ type: "PartDefended", part: eff.part });
+        } else if (state.degradeShield > 0) {
+          // 打ち直し（お豊アクティブ）の盾で1回無効化（docs/03）。
+          state.degradeShield -= 1;
+          events.push({ type: "DegradeNullified", part: eff.part });
         } else {
           const d = degradePart(db, state.sword, eff.part);
           if (d) events.push({ type: "PartDegraded", part: eff.part, from: d.from, to: d.to });
@@ -342,8 +525,14 @@ export function endTurn(db: ContentDB, input: BattleState, rng: Rng): Result {
       } else if (eff.kind === "grab") {
         state.grabbedBy = enemy.uid;
         events.push({ type: "Grabbed", enemyUid: enemy.uid });
+      } else if (eff.kind === "apply_status") {
+        // 状態異常付与（毒/出血/気絶）。受け切り（防御値≧被ダメ）・回避で無効化（docs/01「防御値≧被ダメージ→デバフ無効」）。
+        const safe = dodged || (damage > 0 && !penetrated);
+        if (!safe) {
+          addStatus(state.statuses, eff.status, eff.x);
+          events.push({ type: "StatusApplied", status: eff.status, x: eff.x, toKoyuki: true, enemyUid: null });
+        }
       }
-      // apply_status（毒/出血/気絶）は本ロスター（田舎の柄狙い・掴み・ボス）では未使用。後続フェーズで追加。
     }
 
     // 周期型・狙撃型：次の予告へ進める。
@@ -358,13 +547,47 @@ export function endTurn(db: ContentDB, input: BattleState, rng: Rng): Result {
     }
   }
 
+  // ── 終了フェイズ：状態異常の経過処理（docs/01「ターン構造・終了フェイズ」）──
+  // 出血（防御無視DoT）：敵→こゆきの順に処理。xは半減して消える。
+  for (const enemy of state.enemies) {
+    if (enemy.hp <= 0) continue;
+    const dmg = tickBleed(enemy.statuses);
+    if (dmg > 0) {
+      enemy.hp = Math.max(0, enemy.hp - dmg);
+      events.push({ type: "BleedTicked", enemyUid: enemy.uid, amount: dmg });
+      if (enemy.hp === 0) events.push({ type: "EnemyDefeated", enemyUid: enemy.uid });
+    }
+    enemy.statuses = removeDeadStatuses(enemy.statuses);
+  }
+  const koyukiBleed = tickBleed(state.statuses);
+  if (koyukiBleed > 0) {
+    state.hp = Math.max(0, state.hp - koyukiBleed);
+    events.push({ type: "BleedTicked", enemyUid: null, amount: koyukiBleed });
+  }
+  state.statuses = removeDeadStatuses(state.statuses);
+
+  if (state.hp <= 0) {
+    state.phase = "lost";
+    events.push({ type: "BattleLost" });
+    return { state, events };
+  }
+  if (aliveEnemies(state).length === 0) {
+    state.phase = "won";
+    events.push({ type: "BattleWon" });
+    return { state, events };
+  }
+
   // 終了→次ターン開始フェイズ
   state.turn += 1;
-  state.ap = state.apMax;
-  state.blockPool = 0;
+  // 毒：APを規定値から低下（こゆきの行動リソース攻撃。docs/01「毒」）。
+  state.ap = Math.max(0, state.apMax - poisonTotal(state.statuses));
+  state.blockPool = baseDefense(db, state.sword, state.costume) + state.bonusPools.defense; // 鍔基礎防御＋衣装補正＋防御ボーナス（お豊/打ち直し）を毎ターン再充填
   state.actedThisTurn = false;
   state.pinned = false;
   state.braceChoice = "ukeru";
+  // 毒・気絶の持続ターンを経過させ、切れたものを除去（出血はxの自然減衰で除去済み）。
+  for (const s of state.statuses) if (s.id !== "bleed") s.turns -= 1;
+  state.statuses = state.statuses.filter((s) => s.id === "bleed" || s.turns > 0);
   drawToHandLimit(state, db, rng);
   state.phase = "player";
   events.push({ type: "TurnStarted", turn: state.turn });

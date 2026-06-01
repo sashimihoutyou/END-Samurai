@@ -6,6 +6,7 @@
     "ap": 2,
     "target": "single",
     "flavorKey": "card.kiru.flavor",
+    "upgradeId": "kesagiri",
     "effects": [{ "kind": "attack", "multiplier": 1.0 }]
   },
   {
@@ -74,5 +75,73 @@
     "uses": 3,
     "flavorKey": "card.kizugusuri.flavor",
     "effects": [{ "kind": "heal", "amount": 5 }]
+  },
+  {
+    "id": "kesagiri",
+    "name": "袈裟斬り",
+    "category": "skill",
+    "ap": 3,
+    "target": "single",
+    "flavorKey": "card.kesagiri.flavor",
+    "requirements": [{ "kind": "blade_stage_at_least", "stage": "kireaji_teika" }],
+    "effects": [{ "kind": "attack", "multiplier": 1.5 }]
+  },
+  {
+    "id": "kuzushi_uchi",
+    "name": "崩し打ち",
+    "category": "skill",
+    "ap": 2,
+    "target": "single",
+    "flavorKey": "card.kuzushi_uchi.flavor",
+    "effects": [
+      { "kind": "attack", "multiplier": 0.4 },
+      { "kind": "enemy_defense_down", "amount": 2 }
+    ]
+  },
+  {
+    "id": "nagiharai",
+    "name": "薙ぎ払い",
+    "category": "skill",
+    "ap": 3,
+    "target": "all",
+    "flavorKey": "card.nagiharai.flavor",
+    "effects": [{ "kind": "attack", "multiplier": 0.5 }]
+  },
+  {
+    "id": "tsuka_uchi",
+    "name": "柄打ち",
+    "category": "skill",
+    "ap": 1,
+    "target": "single",
+    "flavorKey": "card.tsuka_uchi.flavor",
+    "effects": [
+      { "kind": "fixed_damage", "amount": 3, "ignoreDefense": true },
+      { "kind": "self_degrade", "part": "tsuka" }
+    ]
+  },
+  {
+    "id": "uchinaoshi",
+    "name": "打ち直し",
+    "category": "companion_active",
+    "ap": 3,
+    "target": "self",
+    "flavorKey": "card.uchinaoshi.flavor",
+    "effects": [
+      { "kind": "buff_attack", "amount": 2 },
+      { "kind": "buff_defense", "amount": 2 },
+      { "kind": "nullify_degrade", "count": 1 }
+    ]
+  },
+  {
+    "id": "kata_keiko",
+    "name": "型稽古",
+    "category": "companion_active",
+    "ap": 2,
+    "target": "self",
+    "flavorKey": "card.kata_keiko.flavor",
+    "effects": [
+      { "kind": "ap_discount", "amount": 1 },
+      { "kind": "buff_combo", "amount": 0.1 }
+    ]
   }
 ]

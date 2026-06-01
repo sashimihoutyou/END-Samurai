@@ -44,6 +44,20 @@
         "type": "charm_encounter",
         "label": "中間地点・道場跡",
         "eventId": "ev_aoi",
+        "next": ["c_musume"]
+      },
+      {
+        "id": "c_musume",
+        "type": "charm_encounter",
+        "label": "村のはずれ・村娘のしかばね",
+        "eventId": "ev_musume",
+        "next": ["c_onsen"]
+      },
+      {
+        "id": "c_onsen",
+        "type": "onsen",
+        "label": "山あいの湯けむり（温泉）",
+        "onsenIds": ["onsen_minna", "onsen_otoyo"],
         "next": ["c_pack"]
       },
       {

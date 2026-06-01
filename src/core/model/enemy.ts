@@ -1,7 +1,8 @@
 import type { SwordPart } from "./sword.js";
+import type { StatusId, StatusInstance } from "./status.js";
 
 // 敵定義。docs/01「敵行動アーキタイプ」の6型を archetype として持つ。
-// α版 Phase 1 では cyclic（周期型）のみを解釈する。他の型は後続フェーズで追加。
+// α版は cyclic（周期型）/ sniper（狙撃型）を解釈する。他の型は後続フェーズで追加。
 
 export type EnemyArchetype =
   | "cyclic"
@@ -13,8 +14,8 @@ export type EnemyArchetype =
 
 export type EnemyEffect =
   | { kind: "damage"; amount: number } // こゆきへのダメージ
-  | { kind: "apply_status"; status: string; x: number } // 状態異常付与（Phase 3）
-  | { kind: "degrade_part"; part: SwordPart; chance: number } // 部位狙い（Phase 2）
+  | { kind: "apply_status"; status: StatusId; x: number } // 状態異常付与（毒/出血/気絶）
+  | { kind: "degrade_part"; part: SwordPart; chance: number } // 部位狙い（sniper）
   | { kind: "grab" };
 
 export interface IntentDef {
@@ -48,4 +49,5 @@ export interface EnemyInstance {
   archetype: EnemyArchetype;
   intents: IntentDef[];
   intentIndex: number; // 次に実行する予告（cyclic はこれをループ）
+  statuses: StatusInstance[]; // 敵に付与された状態異常（出血DoT・気絶スキップ）
 }

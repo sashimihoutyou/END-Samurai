@@ -46,11 +46,13 @@ describe("マップ進行の配線（田舎）", () => {
     game.enterMap();
     game.run.hp = 20;
     game.run.sword = { blade: "namakura", tsuba: "hibiware", tsuka: "yurumi" };
+    game.run.costume = "broken";
     game.travelTo("c_camp");
     expect(game.screen).toBe("camp");
     game.applyCamp();
     expect(game.screen).toBe("map");
     expect(game.run.sword).toEqual({ blade: "shinpin", tsuba: "shinpin", tsuka: "shinpin" });
+    expect(game.run.costume).toBe("normal"); // 衣も繕われる
     expect(game.run.hp).toBe(25); // +5
   });
 
@@ -79,6 +81,96 @@ describe("マップ進行の配線（田舎）", () => {
     game.afterCharmResult();
     expect(game.screen).toBe("map");
     expect(game.mapPos).toBe("c_aoi");
+  });
+
+  it("むすめしかばね遭遇は「斬る！／とろかす…♡」の二択を提示する", () => {
+    const game = new Game(db, stubRoot());
+    game.enterMap();
+    game.mapPos = "c_aoi";
+    game.travelTo("c_musume");
+    expect(game.screen).toBe("event");
+    expect(game.currentEvent?.id).toBe("ev_musume");
+    expect(game.currentEvent?.choices).toHaveLength(2);
+  });
+
+  it("「斬る！」を選ぶと通常戦闘（むすめしかばね）が始まる", () => {
+    const game = new Game(db, stubRoot());
+    game.enterMap();
+    game.mapPos = "c_aoi";
+    game.travelTo("c_musume");
+    game.chooseEvent(0); // 斬る！
+    expect(game.screen).toBe("battle");
+    expect(game.screenCharm).toBe(false);
+    expect(game.battle?.enemies[0].defId).toBe("musume_shikabane");
+  });
+
+  it("「とろかす…♡」→とどめで救済者+1（加入はしない）、マップへ戻る", () => {
+    const game = new Game(db, stubRoot());
+    game.enterMap();
+    game.mapPos = "c_aoi";
+    game.travelTo("c_musume");
+    game.chooseEvent(1); // とろかす…♡
+    expect(game.screenCharm).toBe(true);
+    expect(game.charmEnemyDefId).toBe("musume_shikabane");
+
+    const before = game.run.rescuedCount;
+    game.charm!.enemies[0].qi = 0;
+    game.charm!.enemies[0].defeated = true;
+    game.charmTodome(); // 確認
+    game.charmTodome(); // 実行→勝利
+    expect(game.screen).toBe("charm_result");
+    expect(game.run.rescuedCount).toBe(before + 1);
+    expect(game.run.companions.length).toBe(0); // むすめしかばねは加入しない
+
+    game.afterCharmResult();
+    expect(game.screen).toBe("map");
+    expect(game.mapPos).toBe("c_musume");
+  });
+
+  it("通常戦闘に勝つと戦利品（報酬3択）画面になり、選ぶとデッキに加わる", () => {
+    const game = new Game(db, stubRoot());
+    game.enterMap();
+    game.travelTo("c_konbou");
+    expect(game.screen).toBe("battle");
+    game.battle!.enemies.forEach((e) => (e.hp = 0)); // 撃破状態にする
+    game.normalEndTurn();
+    expect(game.screen).toBe("reward");
+    expect(game.rewardOffer).not.toBeNull();
+    const before = game.run.deck.length;
+    game.chooseReward(0); // 左枠（非ブラインド）を選ぶ
+    expect(game.run.deck.length).toBe(before + 1);
+    expect(game.screen).toBe("map");
+    expect(game.mapPos).toBe("c_konbou");
+  });
+
+  it("報酬は受け取らずに進める（デッキ膨張防止）", () => {
+    const game = new Game(db, stubRoot());
+    game.enterMap();
+    game.travelTo("c_konbou");
+    game.battle!.enemies.forEach((e) => (e.hp = 0));
+    game.normalEndTurn();
+    const before = game.run.deck.length;
+    game.skipReward();
+    expect(game.run.deck.length).toBe(before);
+    expect(game.screen).toBe("map");
+  });
+
+  it("中央ブラインド枠は1回開いてから選ぶ", () => {
+    const game = new Game(db, stubRoot());
+    game.enterMap();
+    game.travelTo("c_konbou");
+    game.battle!.enemies.forEach((e) => (e.hp = 0));
+    game.normalEndTurn();
+    const before = game.run.deck.length;
+    const blind = game.rewardOffer!.blindIndex;
+    expect(game.rewardCardName(blind)).toBeNull(); // 伏せられている
+    game.chooseReward(blind); // 1タップ目＝開く
+    expect(game.rewardRevealed).toBe(true);
+    expect(game.screen).toBe("reward");
+    expect(game.rewardCardName(blind)).not.toBeNull();
+    game.chooseReward(blind); // 2タップ目＝入手
+    expect(game.run.deck.length).toBe(before + 1);
+    expect(game.screen).toBe("map");
   });
 
   it("ボスノードはボス戦として開始する", () => {
