@@ -230,8 +230,8 @@ export function renderCamp(game: Game, root: HTMLElement): void {
       <div class="koyuki" style="margin:12px 0;">
         <div class="sword">${swordLine(db, game.run.sword)}</div>
       </div>
-      <p class="hint">お豊が刀を完全修繕してくれる（全部位を「新品同様」へ）＋ひと晩の休息（HP+5）。</p>
-      <button id="camp" class="bigbtn">刀を直して進む</button>
+      <p class="hint">お豊が刀を完全修繕（全部位を「新品同様」へ）し、破れた衣も繕ってくれる＋ひと晩の休息（HP+5）。</p>
+      <button id="camp" class="bigbtn">刀と衣を直して進む</button>
     </div>
   `;
   root.querySelector<HTMLButtonElement>("#camp")?.addEventListener("click", () => game.applyCamp());

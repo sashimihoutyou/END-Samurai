@@ -12,7 +12,7 @@
         "label": "爪を立てる（出血）",
         "icon": "bleed",
         "effects": [
-          { "kind": "damage", "amount": 3 },
+          { "kind": "damage", "amount": 5 },
           { "kind": "apply_status", "status": "bleed", "x": 2 }
         ]
       },

@@ -55,8 +55,8 @@ describe("状態異常（docs/01）", () => {
   it("出血はターン終了時にXダメージ＋Xを半減（防御無視DoT）", () => {
     const { state } = startBattle(db, setup({ deck: [card("kiru", 1)], enemyDefIds: ["nora_inu"] }), createRng(1));
     state.statuses.push({ id: "bleed", x: 3, turns: Number.MAX_SAFE_INTEGER });
-    const r = endTurn(db, state, createRng(1)); // 野犬 噛みつき4 ＋ 出血3
-    expect(r.state.hp).toBe(30 - 4 - 3);
+    const r = endTurn(db, state, createRng(1)); // 野犬 噛みつき4(鍔3で1通る) ＋ 出血3
+    expect(r.state.hp).toBe(30 - 1 - 3);
     expect(r.events.some((e) => e.type === "BleedTicked" && e.enemyUid === null && e.amount === 3)).toBe(true);
     const bleed = r.state.statuses.find((s) => s.id === "bleed");
     expect(bleed?.x).toBe(1); // 3 → 1（半減）

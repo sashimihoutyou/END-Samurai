@@ -89,7 +89,7 @@ export function renderBattle(game: Game, root: HTMLElement): void {
   const handHtml = battle.hand
     .map((c) => {
       const def = db.cards.get(c.defId)!;
-      const cost = cardApCost(db, def, battle.sword);
+      const cost = cardApCost(db, def, battle.sword, battle.costume);
       const playable = canPlayCard(db, battle, c.uid);
       const flavor = def.flavorKey ? tLine(db, def.flavorKey) : "";
       const uses = def.uses != null ? `・残${c.usesLeft ?? def.uses}` : "";

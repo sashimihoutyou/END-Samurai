@@ -120,6 +120,7 @@ export class Game {
       hp: base,
       maxHp: base,
       sword: makeStarterSword(),
+      costume: "normal",
       deck: makeStarterDeck(),
       companions: [],
       sextech: { mi: 0, shinogi: 0, kissaki: 0 },
@@ -196,6 +197,7 @@ export class Game {
         hp: this.run.hp,
         maxHp: this.run.maxHp,
         enemyDefIds,
+        costume: this.run.costume,
       },
       this.battleRng,
     );
@@ -342,8 +344,9 @@ export class Game {
   applyCamp(): void {
     if (!this.activeNodeId) return;
     this.run.sword = makeStarterSword(); // 全部位「新品同様」へ（完全修繕）
+    this.run.costume = "normal"; // 衣装も繕う（docs/05「野営地の鍛冶屋で衣装修繕」）
     this.run.hp = Math.min(this.run.maxHp, this.run.hp + 5);
-    this.advanceTo(this.activeNodeId, "刀を研ぎ直し、傷を癒した");
+    this.advanceTo(this.activeNodeId, "刀を研ぎ直し、衣を繕い、傷を癒した");
   }
 
   /** イベントの選択肢を実行する。 */
@@ -409,8 +412,9 @@ export class Game {
   private afterNormalUpdate(): void {
     if (!this.battle) return;
     if (this.battle.phase === "won") {
-      this.run.hp = this.battle.hp; // HP・刀の状態をランへ引き継ぐ（1ラン通し）
+      this.run.hp = this.battle.hp; // HP・刀・衣装の状態をランへ引き継ぐ（1ラン通し）
       this.run.sword = this.battle.sword;
+      this.run.costume = this.battle.costume;
       if (this.activeNodeId === null) {
         this.screen = "nora_result"; // プロローグ野犬戦
       } else {

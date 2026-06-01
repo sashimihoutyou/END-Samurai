@@ -6,11 +6,13 @@ import type { BattleEvent, BattleState, Costume } from "../model/battle-state.js
 import type { Rng } from "../rng/rng.js";
 import { getStage, type ContentDB } from "../content/loader.js";
 import {
+  baseDefense,
   bladeAttackPower,
   cardApCost,
   comboRate,
   computeAttackDamage,
   computeFixedDamage,
+  costumeComboBonus,
 } from "./damage.js";
 
 // 通常戦闘（HP戦）のターン構造。docs/01「ターン構造」に対応。
@@ -63,6 +65,18 @@ function tickBleed(list: StatusInstance[]): number {
 
 function removeDeadStatuses(list: StatusInstance[]): StatusInstance[] {
   return list.filter((s) => !(s.id === "bleed" && s.x <= 0));
+}
+
+/** 衣装破損の段階進行（docs/05）。HPに通った被ダメが現在HPの30%以上で1段進む。 */
+function escalateCostume(state: BattleState, hpBefore: number, hpLoss: number, events: BattleEvent[]): void {
+  if (hpLoss <= 0 || hpLoss < Math.ceil(hpBefore * 0.3)) return;
+  if (state.costume === "normal") {
+    state.costume = "damaged";
+    events.push({ type: "CostumeChanged", to: "damaged" });
+  } else if (state.costume === "damaged") {
+    state.costume = "broken";
+    events.push({ type: "CostumeChanged", to: "broken" });
+  }
 }
 
 interface Result {
@@ -120,7 +134,7 @@ export function startBattle(db: ContentDB, setup: BattleSetup, rng: Rng): Result
     discardPile: [],
     ap: apMax,
     apMax,
-    blockPool: 0,
+    blockPool: baseDefense(db, setup.sword, setup.costume ?? "normal"), // 鍔基礎防御＋衣装補正を毎ターンの防御プールに充填（docs/01「鍔の基礎防御値＋積んだ防御値」）
     bonusPools: { attack: 0, defense: 0, comboRate: 0 },
     hp: setup.hp,
     maxHp: setup.maxHp,
@@ -195,7 +209,7 @@ export function canPlayCard(db: ContentDB, state: BattleState, cardUid: string):
   const inst = state.hand.find((c) => c.uid === cardUid);
   if (!inst) return false;
   const def = cardDef(db, inst);
-  if (state.ap < cardApCost(db, def, state.sword)) return false;
+  if (state.ap < cardApCost(db, def, state.sword, state.costume)) return false;
   return meetsRequirements(db, def, state);
 }
 
@@ -220,7 +234,9 @@ function applyDamage(state: BattleState, enemyUid: string, amount: number, event
 }
 
 function tryCombo(db: ContentDB, state: BattleState, lastTargetUid: string, basePower: number, multiplier: number, events: BattleEvent[], rng: Rng): void {
-  const rate = Math.min(comboRate(db, state.sword, Math.min(state.bonusPools.comboRate, COMBO_RATE_CAP)), 0.5);
+  // 連撃率ボーナス＝プール＋衣装大破(+5%)。上限COMBO_RATE_CAP（docs/01）。柄基礎と合算後さらに0.5で頭打ち。
+  const bonus = Math.min(state.bonusPools.comboRate + costumeComboBonus(state.costume), COMBO_RATE_CAP);
+  const rate = Math.min(comboRate(db, state.sword, bonus), 0.5);
   if (!rng.chance(rate)) return;
   // 対象：最後に攻撃した敵。倒していたら最も左の生存敵へオートターゲット（docs/01）。
   let target = state.enemies.find((e) => e.uid === lastTargetUid && e.hp > 0);
@@ -239,7 +255,7 @@ export function playCard(db: ContentDB, input: BattleState, cardUid: string, tar
   if (!inst) throw new Error(`手札にカードがありません: ${cardUid}`);
   const def = cardDef(db, inst);
 
-  const cost = cardApCost(db, def, state.sword);
+  const cost = cardApCost(db, def, state.sword, state.costume);
   if (state.ap < cost) throw new Error("APが足りません");
   if (!meetsRequirements(db, def, state)) throw new Error("使用条件を満たしていません");
 
@@ -403,9 +419,12 @@ export function endTurn(db: ContentDB, input: BattleState, rng: Rng): Result {
         const blocked = Math.min(state.blockPool, damage);
         state.blockPool -= blocked;
         const hpLoss = damage - blocked;
+        const hpBefore = state.hp;
         state.hp = Math.max(0, state.hp - hpLoss);
         penetrated = hpLoss > 0;
         events.push({ type: "DamageTaken", amount: damage, blocked, dodged: false });
+        // 衣装破損：1回の被ダメージ（HPに通った分）が現在HPの30%以上なら段階が進む（docs/05）。
+        escalateCostume(state, hpBefore, hpLoss, events);
       }
     }
 
@@ -478,7 +497,7 @@ export function endTurn(db: ContentDB, input: BattleState, rng: Rng): Result {
   state.turn += 1;
   // 毒：APを規定値から低下（こゆきの行動リソース攻撃。docs/01「毒」）。
   state.ap = Math.max(0, state.apMax - poisonTotal(state.statuses));
-  state.blockPool = 0;
+  state.blockPool = baseDefense(db, state.sword, state.costume); // 鍔基礎防御＋衣装補正を毎ターン再充填
   state.actedThisTurn = false;
   state.pinned = false;
   state.braceChoice = "ukeru";

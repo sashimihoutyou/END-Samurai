@@ -29,7 +29,7 @@ describe("狙撃型の部位狙い（こんぼう山賊・柄狙い）", () => {
     const r = endTurn(db, state, createRng(1)); // 何もせずに受ける（既定）
     expect(r.state.sword.tsuka).toBe("yurumi"); // shinpin(2) → 緩み(1)
     expect(r.events.some((e) => e.type === "PartDegraded" && e.part === "tsuka")).toBe(true);
-    expect(r.state.hp).toBe(25); // 5ダメージ
+    expect(r.state.hp).toBe(28); // 鈍器5 - 鍔基礎防御3 = 2（貫通したので柄も低下）
   });
 
   it("受ける（防御値≧被ダメ）で受け切れば柄は守られる", () => {
@@ -48,7 +48,7 @@ describe("狙撃型の部位狙い（こんぼう山賊・柄狙い）", () => {
     state = setBrace(state, "inasu");
     const r = endTurn(db, state, createRng(3));
     expect(r.state.sword.tsuka).toBe("shinpin"); // 部位は守られる
-    expect(r.state.hp).toBe(30 - 8); // ceil(5 * 1.5) = 8
+    expect(r.state.hp).toBe(30 - 5); // ceil(5*1.5)=8、鍔基礎防御3で軽減し残り5がHPへ
   });
 });
 

@@ -46,11 +46,13 @@ describe("マップ進行の配線（田舎）", () => {
     game.enterMap();
     game.run.hp = 20;
     game.run.sword = { blade: "namakura", tsuba: "hibiware", tsuka: "yurumi" };
+    game.run.costume = "broken";
     game.travelTo("c_camp");
     expect(game.screen).toBe("camp");
     game.applyCamp();
     expect(game.screen).toBe("map");
     expect(game.run.sword).toEqual({ blade: "shinpin", tsuba: "shinpin", tsuka: "shinpin" });
+    expect(game.run.costume).toBe("normal"); // 衣も繕われる
     expect(game.run.hp).toBe(25); // +5
   });
 
