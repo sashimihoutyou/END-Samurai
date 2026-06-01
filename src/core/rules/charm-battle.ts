@@ -350,7 +350,10 @@ export function useTodome(
   const enemy = pickTodomeTarget(state, targetUid);
   if (!enemy || !enemy.defeated) throw new Error("とどめは相手が気力0のときのみ使えます");
 
-  const events: CharmEvent[] = [{ type: "TodomeUsed", enemyUid: enemy.uid }];
+  // とどめ＝膣内中出し（docs/09 §6-1）＝挿入そのもの。処女のまま到達した場合はこの瞬間が初挿入＝処女喪失。
+  const first = state.virgin;
+  if (first) state.virgin = false;
+  const events: CharmEvent[] = [{ type: "TodomeUsed", enemyUid: enemy.uid, first }];
   enemy.qi = 0;
   const def = db.charmEnemies.get(enemy.defId);
   if (def?.joinCompanionId) {

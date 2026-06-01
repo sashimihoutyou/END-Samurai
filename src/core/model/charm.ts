@@ -149,7 +149,7 @@ export type CharmEvent =
   | { type: "EnemyExhausted"; enemyUid: string } // 気力0で放心
   | { type: "SextechPointGained"; total: number }
   | { type: "TodomeReady"; enemyUid: string }
-  | { type: "TodomeUsed"; enemyUid: string }
+  | { type: "TodomeUsed"; enemyUid: string; first: boolean } // first=この とどめ（中出し）が初挿入＝処女喪失を兼ねる
   | { type: "CompanionJoined"; companionId: string }
   | { type: "EnemyActed"; enemyUid: string; intentId: string }
   | { type: "StatusApplied"; status: string; x: number }
