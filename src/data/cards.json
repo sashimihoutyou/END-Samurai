@@ -34,5 +34,45 @@
     "target": "self",
     "flavorKey": "card.mikiru.flavor",
     "effects": [{ "kind": "dodge_next" }]
+  },
+  {
+    "id": "toishi_no_kakera",
+    "name": "砥石のかけら",
+    "category": "item",
+    "ap": 1,
+    "target": "self",
+    "uses": 2,
+    "flavorKey": "card.toishi.flavor",
+    "effects": [{ "kind": "repair_part", "part": "blade", "cap": "kireaji_teika" }]
+  },
+  {
+    "id": "tsuba_no_ategane",
+    "name": "鍔の当て金",
+    "category": "item",
+    "ap": 1,
+    "target": "self",
+    "uses": 2,
+    "flavorKey": "card.ategane.flavor",
+    "effects": [{ "kind": "repair_part", "part": "tsuba", "cap": "hibiware" }]
+  },
+  {
+    "id": "makinaoshi_no_himo",
+    "name": "巻き直しのひも",
+    "category": "item",
+    "ap": 1,
+    "target": "self",
+    "uses": 2,
+    "flavorKey": "card.makinaoshi.flavor",
+    "effects": [{ "kind": "repair_part", "part": "tsuka", "cap": "yurumi" }]
+  },
+  {
+    "id": "kizugusuri",
+    "name": "きずぐすり",
+    "category": "item",
+    "ap": 1,
+    "target": "self",
+    "uses": 3,
+    "flavorKey": "card.kizugusuri.flavor",
+    "effects": [{ "kind": "heal", "amount": 5 }]
   }
 ]

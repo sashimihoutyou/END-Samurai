@@ -1,0 +1,65 @@
+[
+  {
+    "area": "inaka",
+    "entry": "start",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "start",
+        "label": "村はずれの分かれ道",
+        "textKey": "map.inaka.start",
+        "next": ["c_konbou"]
+      },
+      {
+        "id": "c_konbou",
+        "type": "battle",
+        "label": "旧街道（山賊）",
+        "enemyGroup": ["konbou_sanzoku"],
+        "next": ["c_yoromeku", "c_rest"]
+      },
+      {
+        "id": "c_yoromeku",
+        "type": "battle",
+        "label": "獣道（しかばね）",
+        "enemyGroup": ["yoromeku_shikabane"],
+        "next": ["c_camp"]
+      },
+      {
+        "id": "c_rest",
+        "type": "rest",
+        "label": "けもの小道（休息）",
+        "textKey": "map.inaka.rest",
+        "heal": 8,
+        "next": ["c_camp"]
+      },
+      {
+        "id": "c_camp",
+        "type": "camp",
+        "label": "野営地",
+        "textKey": "map.inaka.camp",
+        "next": ["c_aoi"]
+      },
+      {
+        "id": "c_aoi",
+        "type": "charm_encounter",
+        "label": "中間地点・道場跡",
+        "eventId": "ev_aoi",
+        "next": ["c_pack"]
+      },
+      {
+        "id": "c_pack",
+        "type": "battle",
+        "label": "峠の手前（しかばね＋山賊）",
+        "enemyGroup": ["yoromeku_shikabane", "konbou_sanzoku"],
+        "next": ["c_boss"]
+      },
+      {
+        "id": "c_boss",
+        "type": "boss",
+        "label": "村の奥（ボス）",
+        "enemyGroup": ["oo_shikabane"],
+        "next": []
+      }
+    ]
+  }
+]

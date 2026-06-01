@@ -29,5 +29,42 @@
         "effects": [{ "kind": "gaman_attack", "amount": 4 }]
       }
     ]
+  },
+  {
+    "id": "aoi",
+    "name": "葵",
+    "qi": 36,
+    "gaman": 10,
+    "qiDefense": 3,
+    "joinCompanionId": "aoi",
+    "weakness": {
+      "kuchizuke": 1,
+      "hogushi": 3,
+      "chichikuri": 1,
+      "seikou": 1,
+      "ushirodori": 1,
+      "matagari": 1,
+      "uradori": 2
+    },
+    "intents": [
+      {
+        "id": "kata_kuzushi",
+        "label": "型崩し",
+        "icon": "tease",
+        "effects": [{ "kind": "gaman_attack", "amount": 6 }]
+      },
+      {
+        "id": "tehodoki",
+        "label": "手ほどき",
+        "icon": "tease",
+        "effects": [{ "kind": "gaman_attack", "amount": 4 }]
+      },
+      {
+        "id": "shihan_no_yoyuu",
+        "label": "師範の余裕",
+        "icon": "tease",
+        "effects": [{ "kind": "gaman_attack", "amount": 5 }]
+      }
+    ]
   }
 ]

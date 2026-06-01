@@ -40,6 +40,8 @@ const cardEffectSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("fixed_damage"), amount: z.number().int(), ignoreDefense: z.boolean().optional() }),
   z.object({ kind: z.literal("block"), amount: z.number().int() }),
   z.object({ kind: z.literal("dodge_next") }),
+  z.object({ kind: z.literal("repair_part"), part: swordPart, cap: z.string().optional() }),
+  z.object({ kind: z.literal("heal"), amount: z.number().int().positive() }),
 ]);
 
 const cardRequirementSchema = z.discriminatedUnion("kind", [
@@ -156,6 +158,39 @@ export const charmEnemyDefSchema = z.object({
 
 export const textSchema = z.record(z.union([z.string(), z.array(z.string())]));
 
+// ── マップ・イベント（docs/08 §2.7 / §2.8）─────────────────────
+
+const mapNodeSchema = z.object({
+  id: z.string(),
+  type: z.enum(["start", "battle", "boss", "camp", "rest", "charm_encounter", "event"]),
+  label: z.string(),
+  next: z.array(z.string()),
+  textKey: z.string().optional(),
+  enemyGroup: z.array(z.string()).optional(),
+  eventId: z.string().optional(),
+  heal: z.number().int().positive().optional(),
+});
+
+export const mapDefSchema = z.object({
+  area: z.string(),
+  entry: z.string(),
+  nodes: z.array(mapNodeSchema).nonempty(),
+});
+
+const eventOutcomeSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("start_charm_battle"), enemyId: z.string() }),
+  z.object({ kind: z.literal("start_normal_battle"), enemyGroup: z.array(z.string()).nonempty() }),
+  z.object({ kind: z.literal("heal"), amount: z.number().int().positive() }),
+  z.object({ kind: z.literal("continue") }),
+]);
+
+export const eventDefSchema = z.object({
+  id: z.string(),
+  kind: z.enum(["charm_encounter", "companion_join", "rest", "secret_nearmiss"]),
+  introKey: z.string(),
+  choices: z.array(z.object({ labelKey: z.string(), outcome: eventOutcomeSchema })).nonempty(),
+});
+
 export const contentSchema = z.object({
   combat: combatConfigSchema,
   swordStages: z.array(swordPartStagesSchema).length(3),
@@ -163,6 +198,8 @@ export const contentSchema = z.object({
   enemies: z.array(enemyDefSchema).nonempty(),
   sexCards: z.array(sexCardDefSchema).nonempty(),
   charmEnemies: z.array(charmEnemyDefSchema).nonempty(),
+  maps: z.array(mapDefSchema).nonempty(),
+  events: z.array(eventDefSchema).nonempty(),
   text: textSchema,
 });
 

@@ -20,5 +20,73 @@
         "effects": [{ "kind": "damage", "amount": 2 }]
       }
     ]
+  },
+  {
+    "id": "konbou_sanzoku",
+    "name": "こんぼう山賊",
+    "archetype": "sniper",
+    "hp": 16,
+    "defense": 0,
+    "intents": [
+      {
+        "id": "furikaburi",
+        "label": "鈍器ふりかぶり（柄狙い）",
+        "icon": "smash",
+        "telegraphPart": "tsuka",
+        "effects": [
+          { "kind": "damage", "amount": 5 },
+          { "kind": "degrade_part", "part": "tsuka", "chance": 1.0 }
+        ]
+      },
+      {
+        "id": "naguri",
+        "label": "殴りつけ",
+        "icon": "hit",
+        "effects": [{ "kind": "damage", "amount": 4 }]
+      }
+    ]
+  },
+  {
+    "id": "yoromeku_shikabane",
+    "name": "よろめくしかばね",
+    "archetype": "cyclic",
+    "hp": 12,
+    "defense": 0,
+    "intents": [
+      {
+        "id": "yoromeki",
+        "label": "よろめき",
+        "icon": "stagger",
+        "effects": [{ "kind": "damage", "amount": 2 }]
+      },
+      {
+        "id": "mugyuu",
+        "label": "むぎゅう（掴み）",
+        "icon": "grab",
+        "effects": [{ "kind": "grab" }]
+      }
+    ]
+  },
+  {
+    "id": "oo_shikabane",
+    "name": "大しかばね",
+    "archetype": "cyclic",
+    "hp": 32,
+    "defense": 0,
+    "isBoss": true,
+    "intents": [
+      {
+        "id": "dageki",
+        "label": "打撃",
+        "icon": "smash",
+        "effects": [{ "kind": "damage", "amount": 7 }]
+      },
+      {
+        "id": "tsukami",
+        "label": "掴み",
+        "icon": "grab",
+        "effects": [{ "kind": "grab" }]
+      }
+    ]
   }
 ]
