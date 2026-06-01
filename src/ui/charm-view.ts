@@ -24,15 +24,7 @@ export function describeCharmEvent(db: ContentDB, state: CharmBattleState, ev: C
   const nm = (uid: string): string => enemyName(state, uid);
   switch (ev.type) {
     case "TurnStarted": return `── ターン${ev.turn} ──`;
-    case "SexCardPlayed": {
-      const card = db.sexCards.get(ev.cardId);
-      const head = `▶ ${card?.name ?? ev.cardId}`;
-      // 性技ごとの相手リアクション（docs/09 サンプル台詞集 §3）。属性は裏管理なのでログには出さず台詞だけ拾う。
-      const attr = card?.attrs[0];
-      const target = state.enemies.find((e) => !e.defeated) ?? state.enemies[0];
-      const react = attr && target ? tPick(db, `charm.hit.${target.defId}.${attr}`) : undefined;
-      return react ? `${head}\n　${react}` : head;
-    }
+    case "SexCardPlayed": return `▶ ${db.sexCards.get(ev.cardId)?.name ?? ev.cardId}`;
     case "QiDamageDealt": {
       const e = state.enemies.find((x) => x.uid === ev.enemyUid);
       const label = e ? stageLabel(db, nm(ev.enemyUid), ev.stage) : null;
@@ -73,6 +65,13 @@ export function describeCharmEvent(db: ContentDB, state: CharmBattleState, ev: C
     }
     case "StatusApplied": return `　こゆきは「${ev.status}」を受けた`;
     case "WeaknessReaction": return tPick(db, `charm.reaction.${ev.enemyDefId}.${ev.attr}`) ?? null;
+    case "HitReaction": {
+      // 性技ごとの相手リアクション（docs/09 §3）。初挿入は専用台詞（§4）→ 属性別が無ければ汎用へフォールバック。
+      const line = ev.first
+        ? tPick(db, `charm.firstinsert.${ev.enemyDefId}.${ev.attr}`) ?? tPick(db, `charm.firstinsert.${ev.enemyDefId}.generic`)
+        : tPick(db, `charm.hit.${ev.enemyDefId}.${ev.attr}`);
+      return line ? `　${line}` : null;
+    }
     case "BattleWon": return `🎉 とろかし、成功`;
     case "BattleLost": return `💀 こゆきは力尽きた……`;
   }

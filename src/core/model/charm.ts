@@ -125,6 +125,7 @@ export interface CharmBattleState {
   sextech: SextechState;
   sextechPoints: number; // 未割り振りポイント
   lastActionWasEnemy: boolean; // 直近に我慢を0へ追い込んだのが敵か（射精の暴発/狙い撃ち判定）
+  virgin: boolean; // 相手が処女か（初挿入専用台詞の出し分け用。初挿入で false に。docs/09 §4）
   statuses: CharmStatusInstance[];
   turn: number;
   phase: CharmPhase;
@@ -153,5 +154,6 @@ export type CharmEvent =
   | { type: "EnemyActed"; enemyUid: string; intentId: string }
   | { type: "StatusApplied"; status: string; x: number }
   | { type: "WeaknessReaction"; enemyDefId: string; attr: SexAttr } // 弱点×2.0命中の固有リアクション
+  | { type: "HitReaction"; enemyDefId: string; attr: SexAttr; first: boolean } // 性技命中の相手リアクション（first=初挿入専用 docs/09 §3・§4）
   | { type: "BattleWon" }
   | { type: "BattleLost" };

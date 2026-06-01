@@ -41,6 +41,14 @@ export interface CharmSetup {
   hp: number;
   maxHp: number;
   sextech: SextechState;
+  virgin?: boolean; // 相手が処女か（初挿入専用台詞・終了台詞の出し分け用。未指定=false＝経験済み）。docs/09 §4
+}
+
+/** 挿入をともなう性技の属性（初挿入専用台詞の発火対象）。前戯系（くちづけ・乳繰り・ほぐし）は含めない。 */
+const PENETRATION_ATTRS: ReadonlySet<SexAttr> = new Set<SexAttr>(["seikou", "ushirodori", "matagari", "uradori"]);
+
+function isPenetration(attr: SexAttr): boolean {
+  return PENETRATION_ATTRS.has(attr);
 }
 
 interface Result {
@@ -97,6 +105,7 @@ export function startCharmBattle(db: CharmContentDB, setup: CharmSetup, _rng: Rn
     sextech: { ...setup.sextech },
     sextechPoints: 0,
     lastActionWasEnemy: false,
+    virgin: setup.virgin ?? false,
     statuses: [],
     turn: 1,
     phase: "player",
@@ -247,9 +256,16 @@ export function playSexCard(
   events.push({ type: "QiDamageDealt", enemyUid: enemy.uid, amount, stage });
   damageEnemy(enemy, amount, gamanDmg, attr, events);
 
-  // 弱点×2.0命中の固有リアクション（docs/02「弱点突かれリアクション」）
-  if (stage >= WEAKNESS_MAX_STAGE) {
+  // 命中リアクション（docs/09 台詞集）。初挿入＞弱点×2.0＞通常 の優先で1つだけ出す。
+  const firstInsertion = state.virgin && isPenetration(attr);
+  if (firstInsertion) {
+    state.virgin = false; // 処女喪失。以後この戦闘では通常リアクションへ
+    events.push({ type: "HitReaction", enemyDefId: enemy.defId, attr, first: true });
+  } else if (stage >= WEAKNESS_MAX_STAGE) {
+    // 弱点×2.0命中の固有リアクション（docs/02「弱点突かれリアクション」）
     events.push({ type: "WeaknessReaction", enemyDefId: enemy.defId, attr });
+  } else {
+    events.push({ type: "HitReaction", enemyDefId: enemy.defId, attr, first: false });
   }
 
   // 2) 付随効果
