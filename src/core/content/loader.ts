@@ -1,6 +1,7 @@
 import type { CardDef } from "../model/card.js";
 import type { EnemyDef } from "../model/enemy.js";
 import type { CharmEnemyDef, SexCardDef } from "../model/charm.js";
+import type { EventDef, MapDef } from "../model/map.js";
 import type { SwordPart, SwordPartStages, SwordStage } from "../model/sword.js";
 import { contentSchema, type CombatConfig, type Content, type TextData } from "./schema.js";
 
@@ -14,6 +15,8 @@ export interface ContentDB {
   swordStages: ReadonlyMap<SwordPart, SwordPartStages>;
   sexCards: ReadonlyMap<string, SexCardDef>;
   charmEnemies: ReadonlyMap<string, CharmEnemyDef>;
+  maps: ReadonlyMap<string, MapDef>;
+  events: ReadonlyMap<string, EventDef>;
   text: TextData;
 }
 
@@ -56,7 +59,26 @@ export function loadContent(raw: unknown): ContentDB {
     charmEnemies.set(e.id, e as CharmEnemyDef);
   }
 
-  return { combat: parsed.combat, cards, enemies, swordStages, sexCards, charmEnemies, text: parsed.text };
+  const maps = new Map<string, MapDef>();
+  for (const m of parsed.maps) {
+    if (maps.has(m.area)) throw new Error(`重複するマップエリア: ${m.area}`);
+    const ids = new Set(m.nodes.map((n) => n.id));
+    if (!ids.has(m.entry)) throw new Error(`マップ ${m.area} の entry「${m.entry}」が nodes に存在しません`);
+    for (const node of m.nodes) {
+      for (const nx of node.next) {
+        if (!ids.has(nx)) throw new Error(`マップ ${m.area} のノード ${node.id} の接続先「${nx}」が存在しません`);
+      }
+    }
+    maps.set(m.area, m as MapDef);
+  }
+
+  const events = new Map<string, EventDef>();
+  for (const e of parsed.events) {
+    if (events.has(e.id)) throw new Error(`重複するイベントID: ${e.id}`);
+    events.set(e.id, e as EventDef);
+  }
+
+  return { combat: parsed.combat, cards, enemies, swordStages, sexCards, charmEnemies, maps, events, text: parsed.text };
 }
 
 /** 指定部位の段階定義を引く。未知のIDはエラー（フェイルファスト）。 */

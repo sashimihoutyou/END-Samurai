@@ -42,10 +42,19 @@ export function describeCharmEvent(db: ContentDB, state: CharmBattleState, ev: C
     case "GamanRecovered": return `　こゆきは少し落ち着いた（我慢 +${ev.amount}）`;
     case "KoyukiGamanSelf": return ev.amount > 0 ? `　こゆきも高ぶってきた（我慢 -${ev.amount}）` : null;
     case "KoyukiGamanDamaged": return `　こゆきの我慢を ${ev.amount} 削られた${ev.blocked > 0 ? `（${ev.blocked}軽減）` : ""}`;
-    case "Ejaculated":
-      return ev.trigger === "self"
-        ? tPick(db, ev.attr ? `charm.ejac.self.${ev.attr}` : "charm.ejac.self.generic") ?? `▶ こゆきは狙って放った（HP -${ev.hpLoss}）`
-        : tPick(db, "charm.ejac.burst") ?? `💢 こゆきは堪えきれず暴発した……（HP -${ev.hpLoss}）`;
+    case "Ejaculated": {
+      if (ev.trigger !== "self") {
+        return tPick(db, "charm.ejac.burst") ?? `💢 こゆきは堪えきれず暴発した……（HP -${ev.hpLoss}）`;
+      }
+      // 狙い撃ち射精は敵別の台詞を優先（敵別→敵別generic→属性別（旧お豊）→汎用）。
+      const defId = state.enemies[0]?.defId;
+      const line =
+        (ev.attr && defId ? tPick(db, `charm.ejac.self.${defId}.${ev.attr}`) : undefined) ??
+        (defId ? tPick(db, `charm.ejac.self.${defId}.generic`) : undefined) ??
+        (ev.attr ? tPick(db, `charm.ejac.self.${ev.attr}`) : undefined) ??
+        tPick(db, "charm.ejac.self.generic");
+      return line ?? `▶ こゆきは狙って放った（HP -${ev.hpLoss}）`;
+    }
     case "GuardChanged": return ev.amount >= 0 ? `　守り +${ev.amount}` : `　守り ${ev.amount}`;
     case "EnemyExhausted": return `　${nm(ev.enemyUid)}は気力を使い果たした……（放心）`;
     case "SextechPointGained": return tLine(db, "charm.sextech.gained");
@@ -135,10 +144,12 @@ export function renderCharm(game: Game, root: HTMLElement): void {
       : "";
 
   const gamanPct = (charm.gaman / charm.gamanMax) * 100;
+  const foeName = charm.enemies[0]?.name ?? "";
+  const foeDefId = charm.enemies[0]?.defId ?? "";
 
   root.innerHTML = `
-    <h1>とろかし — お豊</h1>
-    <p class="flavor pink">${escapeHtml(tLine(db, "charm.otoyo.start"))}</p>
+    <h1>とろかし — ${escapeHtml(foeName)}</h1>
+    <p class="flavor pink">${escapeHtml(tLine(db, `charm.${foeDefId}.start`))}</p>
     <div class="status"><span class="hint">${escapeHtml(tLine(db, "charm.hint"))}</span></div>
     <div class="enemies">${enemiesHtml}</div>
     <div class="koyuki charm">
