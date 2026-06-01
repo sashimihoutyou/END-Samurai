@@ -6,6 +6,7 @@
     "ap": 2,
     "target": "single",
     "flavorKey": "card.kiru.flavor",
+    "upgradeId": "kesagiri",
     "effects": [{ "kind": "attack", "multiplier": 1.0 }]
   },
   {
@@ -116,6 +117,31 @@
     "effects": [
       { "kind": "fixed_damage", "amount": 3, "ignoreDefense": true },
       { "kind": "self_degrade", "part": "tsuka" }
+    ]
+  },
+  {
+    "id": "uchinaoshi",
+    "name": "打ち直し",
+    "category": "companion_active",
+    "ap": 3,
+    "target": "self",
+    "flavorKey": "card.uchinaoshi.flavor",
+    "effects": [
+      { "kind": "buff_attack", "amount": 2 },
+      { "kind": "buff_defense", "amount": 2 },
+      { "kind": "nullify_degrade", "count": 1 }
+    ]
+  },
+  {
+    "id": "kata_keiko",
+    "name": "型稽古",
+    "category": "companion_active",
+    "ap": 2,
+    "target": "self",
+    "flavorKey": "card.kata_keiko.flavor",
+    "effects": [
+      { "kind": "ap_discount", "amount": 1 },
+      { "kind": "buff_combo", "amount": 0.1 }
     ]
   }
 ]

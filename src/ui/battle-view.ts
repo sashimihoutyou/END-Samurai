@@ -12,6 +12,7 @@ const PART_NAME: Record<SwordPart, string> = { blade: "刀身", tsuba: "鍔", ts
 const STATUS_NAME: Record<string, string> = { poison: "毒", bleed: "出血", stun: "気絶" };
 const STATUS_ICON: Record<string, string> = { poison: "🟣", bleed: "🩸", stun: "😵" };
 const COSTUME_LABEL: Record<Costume, string> = { normal: "", damaged: "　衣装[破損]", broken: "　衣装[大破]" };
+const COMPANION_NAME: Record<string, string> = { otoyo: "お豊", aoi: "葵" };
 
 /** 状態異常配列を「🩸2 🟣1」のように要約する。 */
 function statusBadges(statuses: { id: string; x: number }[]): string {
@@ -50,6 +51,9 @@ export function describeBattleEvent(db: ContentDB, state: BattleState, ev: Battl
     case "BleedTicked": return ev.enemyUid === null ? `　🩸 出血で ${ev.amount} ダメージ` : `　🩸 ${enemyName(ev.enemyUid)}に出血 ${ev.amount}`;
     case "StunSkipped": return `　😵 ${enemyName(ev.enemyUid)}は気絶して動けない`;
     case "CostumeChanged": return ev.to === "broken" ? `　👘💢 衣装が大破した……（防御-2・AP-1・連撃+5%）` : `　👘 衣装が破損した（防御-1）`;
+    case "CompanionBuff": return `　🤝 ${COMPANION_NAME[ev.companionId] ?? ev.companionId}：${ev.label}`;
+    case "HandUpgraded": return `　✨ ${db.cards.get(ev.fromCardId)?.name ?? ev.fromCardId} → ${db.cards.get(ev.toCardId)?.name ?? ev.toCardId}`;
+    case "DegradeNullified": return `　🛡 ${PART_NAME[ev.part]}へのデバフを打ち直しで防いだ`;
     case "KoyukiReaction": return `　「${ev.reactionKey}」`;
     case "BattleWon": return `🎉 戦闘に勝利！`;
     case "BattleLost": return `💀 こゆきは倒れた……`;
@@ -89,13 +93,15 @@ export function renderBattle(game: Game, root: HTMLElement): void {
   const handHtml = battle.hand
     .map((c) => {
       const def = db.cards.get(c.defId)!;
-      const cost = cardApCost(db, def, battle.sword, battle.costume);
+      const cost = cardApCost(db, def, battle.sword, battle.costume, battle.apDiscount);
       const playable = canPlayCard(db, battle, c.uid);
       const flavor = def.flavorKey ? tLine(db, def.flavorKey) : "";
       const uses = def.uses != null ? `・残${c.usesLeft ?? def.uses}` : "";
-      return `<button class="card ${def.category === "item" ? "item" : ""} ${playable ? "" : "disabled"}" data-uid="${c.uid}" title="${escapeHtml(flavor)}" ${playable ? "" : "disabled"}>
+      const cls = def.category === "item" ? "item" : def.category === "companion_active" ? "companion" : "";
+      const used = def.category === "companion_active" && battle.companionUsed.includes(def.id) ? "・使用済" : "";
+      return `<button class="card ${cls} ${playable ? "" : "disabled"}" data-uid="${c.uid}" title="${escapeHtml(flavor)}" ${playable ? "" : "disabled"}>
         <div class="card-name">${escapeHtml(def.name)}</div>
-        <div class="card-ap">AP ${cost}${uses}</div>
+        <div class="card-ap">AP ${cost}${uses}${used}</div>
       </button>`;
     })
     .join("");

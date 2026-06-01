@@ -198,6 +198,7 @@ export class Game {
         maxHp: this.run.maxHp,
         enemyDefIds,
         costume: this.run.costume,
+        companions: this.run.companions,
       },
       this.battleRng,
     );
@@ -535,6 +536,12 @@ export class Game {
     const joinId = def?.joinCompanionId;
     if (joinId && !this.run.companions.some((c) => c.id === joinId)) {
       this.run.companions.push({ id: joinId, affection: "mid" });
+      // 仲間アクティブカードをデッキへ固定投入（docs/03・08 §9「常にデッキに固定投入」）。
+      const activeId = this.db.companions.get(joinId)?.activeCardId;
+      if (activeId && !this.run.deck.some((c) => c.defId === activeId)) {
+        this.cardSeq += 1;
+        this.run.deck.push({ uid: `${activeId}@comp${this.cardSeq}`, defId: activeId });
+      }
     }
     if (joinId) this.run.flags[`${joinId}Joined`] = true;
     else this.run.rescuedCount += 1; // 加入しない相手（むすめしかばね等）は「とどめ！」＝救済者カウント+1（docs/04「救済者システム」）

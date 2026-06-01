@@ -39,6 +39,9 @@ export interface BattleState {
   braceChoice: "ukeru" | "inasu";
   statuses: StatusInstance[]; // こゆき側の状態異常（毒＝AP低下／出血＝DoT）。docs/01「状態異常」
   costume: Costume; // 衣装破損段階（防御・AP・連撃率に影響）。docs/05「衣装破損システム」
+  apDiscount: number; // 技カードのAP軽減（葵アクティブ「型稽古」。この戦闘中）
+  degradeShield: number; // 刀部位デバフを無効化できる残り回数（お豊アクティブ「打ち直し」）
+  companionUsed: string[]; // この戦闘で使用済みの仲間アクティブのカードID（1戦闘1回）
   phase: BattlePhase;
 }
 
@@ -68,6 +71,9 @@ export type BattleEvent =
   | { type: "BleedTicked"; enemyUid: string | null; amount: number } // 出血DoT（null=こゆき）
   | { type: "StunSkipped"; enemyUid: string } // 気絶で敵が行動をスキップ
   | { type: "CostumeChanged"; to: Costume } // 衣装が破損／大破した
+  | { type: "CompanionBuff"; companionId: string; label: string } // 仲間アクティブ／パッシブの効果
+  | { type: "HandUpgraded"; fromCardId: string; toCardId: string } // 葵パッシブで手札の技が上位化
+  | { type: "DegradeNullified"; part: SwordPart } // 刀部位デバフを無効化した（打ち直し）
   | { type: "KoyukiReaction"; reactionKey: string }
   | { type: "BattleWon" }
   | { type: "BattleLost" };

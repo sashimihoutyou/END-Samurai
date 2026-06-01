@@ -18,7 +18,13 @@ export type CardEffect =
   | { kind: "heal"; amount: number } // きずぐすり：HP回復
   | { kind: "enemy_defense_down"; amount: number } // 崩し：対象の防御値を下げる（この戦闘中持続。docs/01「崩し」）
   | { kind: "self_degrade"; part: SwordPart; stages?: number } // 自傷コスト：自分の指定部位を低下（柄打ち・捨て身）
-  | { kind: "apply_status"; status: StatusId; x: number; toTarget: boolean }; // 出血・気絶等を付与（toTarget=敵へ／false=こゆきへ）
+  | { kind: "apply_status"; status: StatusId; x: number; toTarget: boolean } // 出血・気絶等を付与（toTarget=敵へ／false=こゆきへ）
+  // 仲間アクティブ用（この戦闘中持続のバフ。docs/03「仲間スキル」）
+  | { kind: "buff_attack"; amount: number } // 攻撃力ボーナス
+  | { kind: "buff_defense"; amount: number } // 防御値ボーナス（毎ターンの防御プールに充填）
+  | { kind: "buff_combo"; amount: number } // 連撃率ボーナス（0..1）
+  | { kind: "ap_discount"; amount: number } // 技カードのAP消費を軽減（最低1）
+  | { kind: "nullify_degrade"; count: number }; // 刀部位デバフをcount回無効化
 
 export type CardRequirement =
   | { kind: "blade_stage_at_least"; stage: string }
@@ -34,6 +40,7 @@ export interface CardDef {
   effects: CardEffect[];
   requirements?: CardRequirement[];
   uses?: number; // 道具カードの残り回数（item のみ）
+  upgradeId?: string; // 葵パッシブ「見取り稽古」で一時的に置換される上位カードID（docs/03）
 }
 
 /** デッキ内の個体。回数など個体ごとの可変状態を持つ。 */

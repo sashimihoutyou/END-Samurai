@@ -1,0 +1,14 @@
+[
+  {
+    "id": "otoyo",
+    "name": "お豊",
+    "activeCardId": "uchinaoshi",
+    "passive": "battle_start_defense"
+  },
+  {
+    "id": "aoi",
+    "name": "葵",
+    "activeCardId": "kata_keiko",
+    "passive": "battle_start_upgrade"
+  }
+]

@@ -52,11 +52,15 @@ export function baseDefense(db: ContentDB, sword: SwordState, costume: Costume =
   return Math.max(0, db.combat.baseTsubaDefense + (stage.mods.baseDefense ?? 0) - costumeDefensePenalty(costume));
 }
 
-/** 技カードの実効AP消費 ＝ max(1, 基本AP ＋ 刀身段階AP補正 ＋ 柄段階AP補正 ＋ 衣装大破補正)。 */
-export function cardApCost(db: ContentDB, card: CardDef, sword: SwordState, costume: Costume = "normal"): number {
+/**
+ * 技カードの実効AP消費 ＝ max(1, 基本AP ＋ 刀身段階AP補正 ＋ 柄段階AP補正 ＋ 衣装大破補正 − 葵割引)。
+ * apDiscount（葵アクティブ「型稽古」）は技カード（skill）のみに適用する。
+ */
+export function cardApCost(db: ContentDB, card: CardDef, sword: SwordState, costume: Costume = "normal", apDiscount = 0): number {
   const bladeAp = getStage(db, "blade", sword.blade).mods.ap ?? 0;
   const tsukaAp = getStage(db, "tsuka", sword.tsuka).mods.ap ?? 0;
-  return Math.max(1, card.ap + bladeAp + tsukaAp + costumeApPenalty(costume));
+  const discount = card.category === "skill" ? apDiscount : 0;
+  return Math.max(1, card.ap + bladeAp + tsukaAp + costumeApPenalty(costume) - discount);
 }
 
 /** 総連撃率 ＝ 柄段階の連撃率 ＋ 連撃率ボーナスプール（上限は呼び出し側で適用）。 */

@@ -28,7 +28,11 @@ export interface BattleSetup {
   maxHp: number;
   enemyDefIds: string[];
   costume?: Costume; // 衣装破損段階（省略時 normal）。docs/05
+  companions?: { id: string; affection: "low" | "mid" | "high" }[]; // 同行仲間（戦闘開始時パッシブ）。docs/03
 }
+
+const AFFECTION_DEFENSE: Record<"low" | "mid" | "high", number> = { low: 1, mid: 2, high: 3 };
+const AFFECTION_UPGRADE_COUNT: Record<"low" | "mid" | "high", number> = { low: 1, mid: 1, high: 2 };
 
 /** 状態異常を付与する。毒＝magnitude非スタック・持続リセット／出血＝スタック加算（docs/01「状態異常」）。 */
 function addStatus(list: StatusInstance[], id: StatusId, x: number): void {
@@ -130,7 +134,8 @@ export function startBattle(db: ContentDB, setup: BattleSetup, rng: Rng): Result
     kind: "normal",
     enemies: setup.enemyDefIds.map((id, i) => makeEnemyInstance(db, id, i)),
     hand: [],
-    drawPile: rng.shuffle(setup.deck),
+    // デッキ個体を複製して持ち込む（葵パッシブの一時置換・回数消費が run.deck を汚さないように）。
+    drawPile: rng.shuffle(setup.deck).map((c) => ({ ...c })),
     discardPile: [],
     ap: apMax,
     apMax,
@@ -147,10 +152,49 @@ export function startBattle(db: ContentDB, setup: BattleSetup, rng: Rng): Result
     braceChoice: "ukeru",
     statuses: [],
     costume: setup.costume ?? "normal",
+    apDiscount: 0,
+    degradeShield: 0,
+    companionUsed: [],
     phase: "player",
   };
   drawToHandLimit(state, db, rng);
-  return { state, events: [{ type: "TurnStarted", turn: 1 }] };
+  const events: BattleEvent[] = [{ type: "TurnStarted", turn: 1 }];
+  applyCompanionPassives(db, state, setup.companions ?? [], events);
+  return { state, events };
+}
+
+/** 戦闘開始時の仲間パッシブ（docs/03「仲間スキル」）。お豊＝防御値＋／葵＝手札の技を上位化。 */
+function applyCompanionPassives(
+  db: ContentDB,
+  state: BattleState,
+  companions: { id: string; affection: "low" | "mid" | "high" }[],
+  events: BattleEvent[],
+): void {
+  for (const c of companions) {
+    const def = db.companions.get(c.id);
+    if (!def) continue;
+    if (def.passive === "battle_start_defense") {
+      // 鍛えの目：防御値ボーナス＋（毎ターンの防御プールへ充填される）。
+      const amount = AFFECTION_DEFENSE[c.affection];
+      state.bonusPools.defense += amount;
+      state.blockPool += amount; // 初回ターン分も即時反映
+      events.push({ type: "CompanionBuff", companionId: c.id, label: `鍛えの目：防御値+${amount}` });
+    } else if (def.passive === "battle_start_upgrade") {
+      // 見取り稽古：手札の技カードを1ランク上へ一時置換（affectionで枚数）。
+      let remaining = AFFECTION_UPGRADE_COUNT[c.affection];
+      for (const inst of state.hand) {
+        if (remaining <= 0) break;
+        const cd = db.cards.get(inst.defId);
+        if (cd?.category === "skill" && cd.upgradeId && db.cards.has(cd.upgradeId)) {
+          const from = inst.defId;
+          inst.defId = cd.upgradeId; // この戦闘限り（run.deck の個体は別物なので残らない）
+          events.push({ type: "HandUpgraded", fromCardId: from, toCardId: inst.defId });
+          remaining -= 1;
+        }
+      }
+      events.push({ type: "CompanionBuff", companionId: c.id, label: "見取り稽古" });
+    }
+  }
 }
 
 // ── 刀部位の段階操作（修繕・部位デバフ）──────────────────────────
@@ -209,7 +253,9 @@ export function canPlayCard(db: ContentDB, state: BattleState, cardUid: string):
   const inst = state.hand.find((c) => c.uid === cardUid);
   if (!inst) return false;
   const def = cardDef(db, inst);
-  if (state.ap < cardApCost(db, def, state.sword, state.costume)) return false;
+  // 仲間アクティブは1戦闘1回（使用後はその戦闘中グレーアウト）。docs/03。
+  if (def.category === "companion_active" && state.companionUsed.includes(def.id)) return false;
+  if (state.ap < cardApCost(db, def, state.sword, state.costume, state.apDiscount)) return false;
   return meetsRequirements(db, def, state);
 }
 
@@ -255,7 +301,10 @@ export function playCard(db: ContentDB, input: BattleState, cardUid: string, tar
   if (!inst) throw new Error(`手札にカードがありません: ${cardUid}`);
   const def = cardDef(db, inst);
 
-  const cost = cardApCost(db, def, state.sword, state.costume);
+  if (def.category === "companion_active" && state.companionUsed.includes(def.id)) {
+    throw new Error("この仲間アクティブはこの戦闘で使用済みです");
+  }
+  const cost = cardApCost(db, def, state.sword, state.costume, state.apDiscount);
   if (state.ap < cost) throw new Error("APが足りません");
   if (!meetsRequirements(db, def, state)) throw new Error("使用条件を満たしていません");
 
@@ -286,8 +335,35 @@ export function playCard(db: ContentDB, input: BattleState, cardUid: string, tar
         break;
       }
       case "block": {
-        state.blockPool += effect.amount + state.bonusPools.defense;
-        events.push({ type: "BlockGained", amount: effect.amount + state.bonusPools.defense });
+        // 防御値ボーナス（お豊パッシブ・打ち直し）は毎ターンの防御プール充填に含むため、ここでは二重加算しない。
+        state.blockPool += effect.amount;
+        events.push({ type: "BlockGained", amount: effect.amount });
+        break;
+      }
+      case "buff_attack": {
+        state.bonusPools.attack += effect.amount;
+        events.push({ type: "CompanionBuff", companionId: def.id, label: `攻撃力+${effect.amount}` });
+        break;
+      }
+      case "buff_defense": {
+        state.bonusPools.defense += effect.amount;
+        state.blockPool += effect.amount; // このターン分も即時反映
+        events.push({ type: "CompanionBuff", companionId: def.id, label: `防御値+${effect.amount}` });
+        break;
+      }
+      case "buff_combo": {
+        state.bonusPools.comboRate += effect.amount;
+        events.push({ type: "CompanionBuff", companionId: def.id, label: `連撃率+${Math.round(effect.amount * 100)}%` });
+        break;
+      }
+      case "ap_discount": {
+        state.apDiscount += effect.amount;
+        events.push({ type: "CompanionBuff", companionId: def.id, label: `技のAP-${effect.amount}` });
+        break;
+      }
+      case "nullify_degrade": {
+        state.degradeShield += effect.count;
+        events.push({ type: "CompanionBuff", companionId: def.id, label: `刀デバフ無効化×${effect.count}` });
         break;
       }
       case "dodge_next": {
@@ -340,9 +416,13 @@ export function playCard(db: ContentDB, input: BattleState, cardUid: string, tar
     }
   }
 
-  // 使用済みカードの後始末。道具（uses持ち）は回数を1減らし、残れば捨て札へ・0なら破棄（デッキから消滅）。
+  // 使用済みカードの後始末。
   state.hand = state.hand.filter((c) => c.uid !== cardUid);
-  if (def.uses != null) {
+  if (def.category === "companion_active") {
+    // 仲間アクティブ：この戦闘では再使用不可（捨て札にも山札にも戻さない＝再ドローされない）。
+    // 戦闘終了後は run.deck 側の個体が残るため自然にデッキへ戻る（docs/03「戦闘後デッキ復帰」）。
+    state.companionUsed.push(def.id);
+  } else if (def.uses != null) {
     const left = (inst.usesLeft ?? def.uses) - 1;
     if (left > 0) {
       inst.usesLeft = left;
@@ -434,6 +514,10 @@ export function endTurn(db: ContentDB, input: BattleState, rng: Rng): Result {
         const safe = (inasu && telegraph === eff.part) || dodged || (damage > 0 && !penetrated);
         if (safe) {
           events.push({ type: "PartDefended", part: eff.part });
+        } else if (state.degradeShield > 0) {
+          // 打ち直し（お豊アクティブ）の盾で1回無効化（docs/03）。
+          state.degradeShield -= 1;
+          events.push({ type: "DegradeNullified", part: eff.part });
         } else {
           const d = degradePart(db, state.sword, eff.part);
           if (d) events.push({ type: "PartDegraded", part: eff.part, from: d.from, to: d.to });
@@ -497,7 +581,7 @@ export function endTurn(db: ContentDB, input: BattleState, rng: Rng): Result {
   state.turn += 1;
   // 毒：APを規定値から低下（こゆきの行動リソース攻撃。docs/01「毒」）。
   state.ap = Math.max(0, state.apMax - poisonTotal(state.statuses));
-  state.blockPool = baseDefense(db, state.sword, state.costume); // 鍔基礎防御＋衣装補正を毎ターン再充填
+  state.blockPool = baseDefense(db, state.sword, state.costume) + state.bonusPools.defense; // 鍔基礎防御＋衣装補正＋防御ボーナス（お豊/打ち直し）を毎ターン再充填
   state.actedThisTurn = false;
   state.pinned = false;
   state.braceChoice = "ukeru";

@@ -1,6 +1,7 @@
 import type { CardDef } from "../model/card.js";
 import type { EnemyDef } from "../model/enemy.js";
 import type { CharmEnemyDef, SexCardDef } from "../model/charm.js";
+import type { CompanionDef } from "../model/companion.js";
 import type { EventDef, MapDef } from "../model/map.js";
 import type { SwordPart, SwordPartStages, SwordStage } from "../model/sword.js";
 import { contentSchema, type CombatConfig, type Content, type TextData } from "./schema.js";
@@ -17,6 +18,7 @@ export interface ContentDB {
   charmEnemies: ReadonlyMap<string, CharmEnemyDef>;
   maps: ReadonlyMap<string, MapDef>;
   events: ReadonlyMap<string, EventDef>;
+  companions: ReadonlyMap<string, CompanionDef>;
   rewards: { dropPool: string[] };
   text: TextData;
 }
@@ -84,7 +86,14 @@ export function loadContent(raw: unknown): ContentDB {
     if (!cards.has(id)) throw new Error(`報酬ドロップ候補のカードID「${id}」が cards に存在しません`);
   }
 
-  return { combat: parsed.combat, cards, enemies, swordStages, sexCards, charmEnemies, maps, events, rewards: parsed.rewards, text: parsed.text };
+  const companions = new Map<string, CompanionDef>();
+  for (const c of parsed.companions) {
+    if (companions.has(c.id)) throw new Error(`重複する仲間ID: ${c.id}`);
+    if (!cards.has(c.activeCardId)) throw new Error(`仲間 ${c.id} のアクティブカード「${c.activeCardId}」が cards に存在しません`);
+    companions.set(c.id, c as CompanionDef);
+  }
+
+  return { combat: parsed.combat, cards, enemies, swordStages, sexCards, charmEnemies, maps, events, companions, rewards: parsed.rewards, text: parsed.text };
 }
 
 /** 指定部位の段階定義を引く。未知のIDはエラー（フェイルファスト）。 */

@@ -47,6 +47,11 @@ const cardEffectSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("enemy_defense_down"), amount: z.number().int().positive() }),
   z.object({ kind: z.literal("self_degrade"), part: swordPart, stages: z.number().int().positive().optional() }),
   z.object({ kind: z.literal("apply_status"), status: statusId, x: z.number().int().positive(), toTarget: z.boolean() }),
+  z.object({ kind: z.literal("buff_attack"), amount: z.number().int() }),
+  z.object({ kind: z.literal("buff_defense"), amount: z.number().int() }),
+  z.object({ kind: z.literal("buff_combo"), amount: z.number() }),
+  z.object({ kind: z.literal("ap_discount"), amount: z.number().int().positive() }),
+  z.object({ kind: z.literal("nullify_degrade"), count: z.number().int().positive() }),
 ]);
 
 const cardRequirementSchema = z.discriminatedUnion("kind", [
@@ -64,6 +69,15 @@ export const cardDefSchema = z.object({
   effects: z.array(cardEffectSchema),
   requirements: z.array(cardRequirementSchema).optional(),
   uses: z.number().int().positive().optional(),
+  upgradeId: z.string().optional(),
+});
+
+// 同行仲間（docs/03「仲間スキル」）。
+export const companionDefSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  activeCardId: z.string(),
+  passive: z.enum(["battle_start_defense", "battle_start_upgrade"]),
 });
 
 const enemyEffectSchema = z.discriminatedUnion("kind", [
@@ -210,6 +224,7 @@ export const contentSchema = z.object({
   charmEnemies: z.array(charmEnemyDefSchema).nonempty(),
   maps: z.array(mapDefSchema).nonempty(),
   events: z.array(eventDefSchema).nonempty(),
+  companions: z.array(companionDefSchema).nonempty(),
   rewards: rewardsSchema,
   text: textSchema,
 });
