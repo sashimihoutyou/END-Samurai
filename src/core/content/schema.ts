@@ -35,6 +35,8 @@ export const swordPartStagesSchema = z.object({
   stages: z.array(swordStageSchema).nonempty(),
 });
 
+const statusId = z.enum(["poison", "bleed", "stun"]);
+
 const cardEffectSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("attack"), multiplier: z.number(), ignoreDefense: z.boolean().optional() }),
   z.object({ kind: z.literal("fixed_damage"), amount: z.number().int(), ignoreDefense: z.boolean().optional() }),
@@ -42,6 +44,9 @@ const cardEffectSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("dodge_next") }),
   z.object({ kind: z.literal("repair_part"), part: swordPart, cap: z.string().optional() }),
   z.object({ kind: z.literal("heal"), amount: z.number().int().positive() }),
+  z.object({ kind: z.literal("enemy_defense_down"), amount: z.number().int().positive() }),
+  z.object({ kind: z.literal("self_degrade"), part: swordPart, stages: z.number().int().positive().optional() }),
+  z.object({ kind: z.literal("apply_status"), status: statusId, x: z.number().int().positive(), toTarget: z.boolean() }),
 ]);
 
 const cardRequirementSchema = z.discriminatedUnion("kind", [
@@ -63,7 +68,7 @@ export const cardDefSchema = z.object({
 
 const enemyEffectSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("damage"), amount: z.number().int() }),
-  z.object({ kind: z.literal("apply_status"), status: z.string(), x: z.number().int() }),
+  z.object({ kind: z.literal("apply_status"), status: statusId, x: z.number().int().positive() }),
   z.object({ kind: z.literal("degrade_part"), part: swordPart, chance: z.number() }),
   z.object({ kind: z.literal("grab") }),
 ]);
@@ -191,6 +196,11 @@ export const eventDefSchema = z.object({
   choices: z.array(z.object({ labelKey: z.string(), outcome: eventOutcomeSchema })).nonempty(),
 });
 
+// 戦闘報酬（docs/03「戦闘報酬」・docs/08 §10 ドロップ候補）。
+export const rewardsSchema = z.object({
+  dropPool: z.array(z.string()).nonempty(), // 田舎で入手しうるカードID
+});
+
 export const contentSchema = z.object({
   combat: combatConfigSchema,
   swordStages: z.array(swordPartStagesSchema).length(3),
@@ -200,6 +210,7 @@ export const contentSchema = z.object({
   charmEnemies: z.array(charmEnemyDefSchema).nonempty(),
   maps: z.array(mapDefSchema).nonempty(),
   events: z.array(eventDefSchema).nonempty(),
+  rewards: rewardsSchema,
   text: textSchema,
 });
 

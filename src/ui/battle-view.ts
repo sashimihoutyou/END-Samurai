@@ -1,6 +1,6 @@
 import type { Game } from "../app/game.js";
 import type { ContentDB } from "../core/content/loader.js";
-import type { BattleEvent, BattleState } from "../core/model/battle-state.js";
+import type { BattleEvent, BattleState, Costume } from "../core/model/battle-state.js";
 import type { SwordPart } from "../core/model/sword.js";
 import { cardApCost } from "../core/rules/damage.js";
 import { canPlayCard } from "../core/rules/normal-battle.js";
@@ -9,6 +9,14 @@ import { escapeHtml, tLine } from "./text.js";
 // 通常戦闘（HP戦）のDOM描画。Core層を呼ぶだけで状態は持たない。
 
 const PART_NAME: Record<SwordPart, string> = { blade: "刀身", tsuba: "鍔", tsuka: "柄" };
+const STATUS_NAME: Record<string, string> = { poison: "毒", bleed: "出血", stun: "気絶" };
+const STATUS_ICON: Record<string, string> = { poison: "🟣", bleed: "🩸", stun: "😵" };
+const COSTUME_LABEL: Record<Costume, string> = { normal: "", damaged: "　衣装[破損]", broken: "　衣装[大破]" };
+
+/** 状態異常配列を「🩸2 🟣1」のように要約する。 */
+function statusBadges(statuses: { id: string; x: number }[]): string {
+  return statuses.map((s) => `${STATUS_ICON[s.id] ?? "✦"}${s.x}`).join(" ");
+}
 
 function stageDisplay(db: ContentDB, part: SwordPart, id: string): string {
   return db.swordStages.get(part)?.stages.find((s) => s.id === id)?.name ?? id;
@@ -34,6 +42,14 @@ export function describeBattleEvent(db: ContentDB, state: BattleState, ev: Battl
     case "Grabbed": return `　${enemyName(ev.enemyUid)}に掴まれた！（次のターンに攻撃して振りほどけ）`;
     case "GrabReleased": return `　掴みを振りほどいた`;
     case "PinnedDown": return `　💢 押し倒された……（防御半減・回避不可）`;
+    case "EnemyDefenseDown": return `　🔨 ${enemyName(ev.enemyUid)}の守りを崩した（防御値 -${ev.amount}）`;
+    case "StatusApplied": {
+      const label = STATUS_NAME[ev.status];
+      return ev.toKoyuki ? `　💢 こゆきは「${label}」を受けた（${ev.x}）` : `　${enemyName(ev.enemyUid ?? "")}に「${label}」を与えた（${ev.x}）`;
+    }
+    case "BleedTicked": return ev.enemyUid === null ? `　🩸 出血で ${ev.amount} ダメージ` : `　🩸 ${enemyName(ev.enemyUid)}に出血 ${ev.amount}`;
+    case "StunSkipped": return `　😵 ${enemyName(ev.enemyUid)}は気絶して動けない`;
+    case "CostumeChanged": return ev.to === "broken" ? `　👘💢 衣装が大破した……（防御-2・AP-1・連撃+5%）` : `　👘 衣装が破損した（防御-1）`;
     case "KoyukiReaction": return `　「${ev.reactionKey}」`;
     case "BattleWon": return `🎉 戦闘に勝利！`;
     case "BattleLost": return `💀 こゆきは倒れた……`;
@@ -60,9 +76,10 @@ export function renderBattle(game: Game, root: HTMLElement): void {
       const alive = e.hp > 0;
       const intent = e.intents[e.intentIndex];
       const grabbing = battle.grabbedBy === e.uid;
+      const badges = statusBadges(e.statuses);
       return `<div class="enemy ${alive ? "" : "dead"}">
         <div class="enemy-name">${escapeHtml(e.name)}${e.defense > 0 ? ` 🛡${e.defense}` : ""}${grabbing ? " 🤚" : ""}</div>
-        <div class="enemy-hp">HP ${e.hp}/${e.maxHp}</div>
+        <div class="enemy-hp">HP ${e.hp}/${e.maxHp}${badges ? `　${badges}` : ""}</div>
         <div class="bar"><span style="width:${(e.hp / e.maxHp) * 100}%"></span></div>
         ${alive ? `<div class="intent">予告: ${escapeHtml(intent.label)}（${intentSummary(e)}）</div>` : `<div class="intent">―</div>`}
       </div>`;
@@ -98,8 +115,8 @@ export function renderBattle(game: Game, root: HTMLElement): void {
     <div class="status">ターン ${battle.turn}　<span class="hint">${escapeHtml(tLine(db, game.battleHintKey))}</span></div>
     <div class="enemies">${enemiesHtml}</div>
     <div class="koyuki">
-      <div>こゆき　HP ${battle.hp}/${battle.maxHp}　AP ${battle.ap}/${battle.apMax}　防御値 🛡${battle.blockPool}${battle.dodgeNext ? "　[見切り構え]" : ""}${battle.grabbedBy ? "　[掴まれ中]" : ""}</div>
-      <div class="sword">刀身[${stageName(db, battle.sword, "blade")}] 鍔[${stageName(db, battle.sword, "tsuba")}] 柄[${stageName(db, battle.sword, "tsuka")}]</div>
+      <div>こゆき　HP ${battle.hp}/${battle.maxHp}　AP ${battle.ap}/${battle.apMax}　防御値 🛡${battle.blockPool}${battle.dodgeNext ? "　[見切り構え]" : ""}${battle.grabbedBy ? "　[掴まれ中]" : ""}${statusBadges(battle.statuses) ? `　${statusBadges(battle.statuses)}` : ""}</div>
+      <div class="sword">刀身[${stageName(db, battle.sword, "blade")}] 鍔[${stageName(db, battle.sword, "tsuba")}] 柄[${stageName(db, battle.sword, "tsuka")}]${COSTUME_LABEL[battle.costume]}</div>
     </div>
     ${braceHtml}
     <div class="hand">${handHtml}</div>

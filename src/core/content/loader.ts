@@ -17,6 +17,7 @@ export interface ContentDB {
   charmEnemies: ReadonlyMap<string, CharmEnemyDef>;
   maps: ReadonlyMap<string, MapDef>;
   events: ReadonlyMap<string, EventDef>;
+  rewards: { dropPool: string[] };
   text: TextData;
 }
 
@@ -78,7 +79,12 @@ export function loadContent(raw: unknown): ContentDB {
     events.set(e.id, e as EventDef);
   }
 
-  return { combat: parsed.combat, cards, enemies, swordStages, sexCards, charmEnemies, maps, events, text: parsed.text };
+  // ドロップ候補IDがカードとして存在するか検証（スキーマずれの早期検出）。
+  for (const id of parsed.rewards.dropPool) {
+    if (!cards.has(id)) throw new Error(`報酬ドロップ候補のカードID「${id}」が cards に存在しません`);
+  }
+
+  return { combat: parsed.combat, cards, enemies, swordStages, sexCards, charmEnemies, maps, events, rewards: parsed.rewards, text: parsed.text };
 }
 
 /** 指定部位の段階定義を引く。未知のIDはエラー（フェイルファスト）。 */

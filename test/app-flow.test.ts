@@ -125,6 +125,52 @@ describe("マップ進行の配線（田舎）", () => {
     expect(game.mapPos).toBe("c_musume");
   });
 
+  it("通常戦闘に勝つと戦利品（報酬3択）画面になり、選ぶとデッキに加わる", () => {
+    const game = new Game(db, stubRoot());
+    game.enterMap();
+    game.travelTo("c_konbou");
+    expect(game.screen).toBe("battle");
+    game.battle!.enemies.forEach((e) => (e.hp = 0)); // 撃破状態にする
+    game.normalEndTurn();
+    expect(game.screen).toBe("reward");
+    expect(game.rewardOffer).not.toBeNull();
+    const before = game.run.deck.length;
+    game.chooseReward(0); // 左枠（非ブラインド）を選ぶ
+    expect(game.run.deck.length).toBe(before + 1);
+    expect(game.screen).toBe("map");
+    expect(game.mapPos).toBe("c_konbou");
+  });
+
+  it("報酬は受け取らずに進める（デッキ膨張防止）", () => {
+    const game = new Game(db, stubRoot());
+    game.enterMap();
+    game.travelTo("c_konbou");
+    game.battle!.enemies.forEach((e) => (e.hp = 0));
+    game.normalEndTurn();
+    const before = game.run.deck.length;
+    game.skipReward();
+    expect(game.run.deck.length).toBe(before);
+    expect(game.screen).toBe("map");
+  });
+
+  it("中央ブラインド枠は1回開いてから選ぶ", () => {
+    const game = new Game(db, stubRoot());
+    game.enterMap();
+    game.travelTo("c_konbou");
+    game.battle!.enemies.forEach((e) => (e.hp = 0));
+    game.normalEndTurn();
+    const before = game.run.deck.length;
+    const blind = game.rewardOffer!.blindIndex;
+    expect(game.rewardCardName(blind)).toBeNull(); // 伏せられている
+    game.chooseReward(blind); // 1タップ目＝開く
+    expect(game.rewardRevealed).toBe(true);
+    expect(game.screen).toBe("reward");
+    expect(game.rewardCardName(blind)).not.toBeNull();
+    game.chooseReward(blind); // 2タップ目＝入手
+    expect(game.run.deck.length).toBe(before + 1);
+    expect(game.screen).toBe("map");
+  });
+
   it("ボスノードはボス戦として開始する", () => {
     const game = new Game(db, stubRoot());
     game.enterMap();

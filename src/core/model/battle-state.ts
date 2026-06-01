@@ -1,5 +1,6 @@
 import type { CardInstance } from "./card.js";
 import type { EnemyInstance } from "./enemy.js";
+import type { StatusId, StatusInstance } from "./status.js";
 import type { SwordPart, SwordState } from "./sword.js";
 
 // 戦闘中の状態。Core層の純粋関数（rules/normal-battle.ts）が
@@ -36,8 +37,13 @@ export interface BattleState {
   // 部位狙い予告（狙撃型）への対応選択。docs/01「部位狙いへの受け／いなし」。
   // "ukeru"（既定）＝通常処理／"inasu"＝狙われた部位は確定で守るが被ダメ+50%。
   braceChoice: "ukeru" | "inasu";
+  statuses: StatusInstance[]; // こゆき側の状態異常（毒＝AP低下／出血＝DoT）。docs/01「状態異常」
+  costume: Costume; // 衣装破損段階（防御・AP・連撃率に影響）。docs/05「衣装破損システム」
   phase: BattlePhase;
 }
+
+/** 衣装破損段階（docs/05）。通常→破損→大破。 */
+export type Costume = "normal" | "damaged" | "broken";
 
 // UI層が再生する「何が起きたか」のイベント列。描画方法は持たない。
 export type BattleEvent =
@@ -57,6 +63,11 @@ export type BattleEvent =
   | { type: "Grabbed"; enemyUid: string } // 掴まれた
   | { type: "GrabReleased"; enemyUid: string } // 掴みを振りほどいた（攻撃で解除）
   | { type: "PinnedDown" } // 押し倒された（防御半減・回避不可）
+  | { type: "EnemyDefenseDown"; enemyUid: string; amount: number } // 崩しで敵防御値を削った
+  | { type: "StatusApplied"; status: StatusId; x: number; toKoyuki: boolean; enemyUid: string | null } // 状態異常付与
+  | { type: "BleedTicked"; enemyUid: string | null; amount: number } // 出血DoT（null=こゆき）
+  | { type: "StunSkipped"; enemyUid: string } // 気絶で敵が行動をスキップ
+  | { type: "CostumeChanged"; to: Costume } // 衣装が破損／大破した
   | { type: "KoyukiReaction"; reactionKey: string }
   | { type: "BattleWon" }
   | { type: "BattleLost" };

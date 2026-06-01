@@ -8,10 +8,13 @@
     "charmTarget": true,
     "intents": [
       {
-        "id": "namameki",
-        "label": "なまめかしいよろめき",
-        "icon": "stagger",
-        "effects": [{ "kind": "damage", "amount": 3 }]
+        "id": "kakitsume",
+        "label": "爪を立てる（出血）",
+        "icon": "bleed",
+        "effects": [
+          { "kind": "damage", "amount": 3 },
+          { "kind": "apply_status", "status": "bleed", "x": 2 }
+        ]
       },
       {
         "id": "shinadare",

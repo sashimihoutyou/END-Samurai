@@ -1,8 +1,10 @@
 // カード定義。docs/08「データスキーマ＞カード」に対応。
-// 技カードの attack/block/dodge_next/fixed_damage に加え、道具カードの修繕・回復を実装する。
-// 崩し（enemy_defense_down）・自傷（self_degrade）・状態異常解除（cure_status）は後続フェーズで追加する。
+// 技カードの attack/block/dodge_next/fixed_damage に加え、道具カードの修繕・回復、
+// 崩し（enemy_defense_down）・自傷（self_degrade）・状態異常付与（apply_status）を実装する。
+// 状態異常解除（cure_status＝まじない札）は後続フェーズで追加する。
 
 import type { SwordPart } from "./sword.js";
+import type { StatusId } from "./status.js";
 
 export type CardCategory = "skill" | "item" | "companion_active";
 export type TargetType = "single" | "all" | "pierce" | "self" | "self_aoe";
@@ -13,7 +15,10 @@ export type CardEffect =
   | { kind: "block"; amount: number } // 受ける
   | { kind: "dodge_next" } // 見切る（次の敵攻撃を完全回避）
   | { kind: "repair_part"; part: SwordPart; cap?: string } // 修繕：指定部位を1段階回復（cap段階まで。低レア道具は回復上限あり）
-  | { kind: "heal"; amount: number }; // きずぐすり：HP回復
+  | { kind: "heal"; amount: number } // きずぐすり：HP回復
+  | { kind: "enemy_defense_down"; amount: number } // 崩し：対象の防御値を下げる（この戦闘中持続。docs/01「崩し」）
+  | { kind: "self_degrade"; part: SwordPart; stages?: number } // 自傷コスト：自分の指定部位を低下（柄打ち・捨て身）
+  | { kind: "apply_status"; status: StatusId; x: number; toTarget: boolean }; // 出血・気絶等を付与（toTarget=敵へ／false=こゆきへ）
 
 export type CardRequirement =
   | { kind: "blade_stage_at_least"; stage: string }

@@ -74,5 +74,48 @@
     "uses": 3,
     "flavorKey": "card.kizugusuri.flavor",
     "effects": [{ "kind": "heal", "amount": 5 }]
+  },
+  {
+    "id": "kesagiri",
+    "name": "袈裟斬り",
+    "category": "skill",
+    "ap": 3,
+    "target": "single",
+    "flavorKey": "card.kesagiri.flavor",
+    "requirements": [{ "kind": "blade_stage_at_least", "stage": "kireaji_teika" }],
+    "effects": [{ "kind": "attack", "multiplier": 1.5 }]
+  },
+  {
+    "id": "kuzushi_uchi",
+    "name": "崩し打ち",
+    "category": "skill",
+    "ap": 2,
+    "target": "single",
+    "flavorKey": "card.kuzushi_uchi.flavor",
+    "effects": [
+      { "kind": "attack", "multiplier": 0.4 },
+      { "kind": "enemy_defense_down", "amount": 2 }
+    ]
+  },
+  {
+    "id": "nagiharai",
+    "name": "薙ぎ払い",
+    "category": "skill",
+    "ap": 3,
+    "target": "all",
+    "flavorKey": "card.nagiharai.flavor",
+    "effects": [{ "kind": "attack", "multiplier": 0.5 }]
+  },
+  {
+    "id": "tsuka_uchi",
+    "name": "柄打ち",
+    "category": "skill",
+    "ap": 1,
+    "target": "single",
+    "flavorKey": "card.tsuka_uchi.flavor",
+    "effects": [
+      { "kind": "fixed_damage", "amount": 3, "ignoreDefense": true },
+      { "kind": "self_degrade", "part": "tsuka" }
+    ]
   }
 ]

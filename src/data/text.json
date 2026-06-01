@@ -190,6 +190,12 @@
   "card.ategane.flavor": "鍔の欠けに金物を当てて、とりあえず。",
   "card.makinaoshi.flavor": "柄糸を巻き直す。地味だが効く。",
   "card.kizugusuri.flavor": "苦い。効いている気はする。",
+  "card.kesagiri.flavor": "肩から袈裟懸け。なまくらだと振りかぶれない。",
+  "card.kuzushi_uchi.flavor": "硬い相手は、まず崩す。……硬いの、嫌いなんだよ。",
+  "card.nagiharai.flavor": "横一文字に薙ぐ。当たれば儲けもの、くらいの広さ。",
+  "card.tsuka_uchi.flavor": "刀身じゃなく柄で殴る。柄は痛むが、防御なんて知らん。",
+
+  "reward.lead": "倒した相手が落としていったものを検める。役に立ちそうなのを、ひとつだけ。中央のひとつは——開けてみるまで分からない。",
 
   "battle.hint": "カードでAPを使って敵を斬る。柄や鍔を狙う敵には『受ける／いなす』、掴まれたら次のターンにその敵を攻撃して振りほどく。",
   "battle.nora_inu.encounter": "痩せた野犬がうなりながら近づいてくる。元は誰かの飼い犬だったのだろうか。",

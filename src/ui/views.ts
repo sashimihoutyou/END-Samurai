@@ -237,6 +237,37 @@ export function renderCamp(game: Game, root: HTMLElement): void {
   root.querySelector<HTMLButtonElement>("#camp")?.addEventListener("click", () => game.applyCamp());
 }
 
+export function renderReward(game: Game, root: HTMLElement): void {
+  const db = game.db;
+  const offer = game.rewardOffer;
+  if (!offer) return;
+  const cards = offer.cardIds
+    .map((id, i) => {
+      const name = game.rewardCardName(i);
+      const blind = i === offer.blindIndex && name === null;
+      const def = db.cards.get(id);
+      const flavor = !blind && def?.flavorKey ? tLine(db, def.flavorKey) : "";
+      const label = blind ? "？？？（ブラインド）" : escapeHtml(name ?? id);
+      const sub = blind ? "中身は開けてのお楽しみ" : `AP ${def?.ap ?? "?"}${def?.uses != null ? `・${def.uses}回` : ""}`;
+      return `<button class="bigbtn reward-card ${blind ? "blind" : ""}" data-reward="${i}" title="${escapeHtml(flavor)}">
+        <span class="card-name">${label}</span><br><span class="card-ap">${sub}</span>
+      </button>`;
+    })
+    .join("");
+  root.innerHTML = `
+    <div class="screen narration-screen">
+      <h1>戦利品</h1>
+      <p class="narration">${escapeHtml(tLine(db, "reward.lead"))}</p>
+      <div class="map-choices reward-choices">${cards}</div>
+      <button id="skip" class="bigbtn">受け取らない</button>
+    </div>
+  `;
+  root.querySelectorAll<HTMLButtonElement>(".reward-card").forEach((btn) => {
+    btn.addEventListener("click", () => game.chooseReward(Number(btn.dataset.reward)));
+  });
+  root.querySelector<HTMLButtonElement>("#skip")?.addEventListener("click", () => game.skipReward());
+}
+
 export function renderResult(game: Game, root: HTMLElement): void {
   const db = game.db;
   root.innerHTML = `

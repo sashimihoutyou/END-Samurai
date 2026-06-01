@@ -15,6 +15,7 @@ import {
   todomeReady,
   useTodome,
 } from "../core/rules/charm-battle.js";
+import { generateReward, type RewardOffer } from "../core/rules/reward.js";
 import { makeStarterDeck, makeStarterSword } from "./starter.js";
 import { describeBattleEvent, renderBattle } from "../ui/battle-view.js";
 import { describeCharmEvent, renderCharm } from "../ui/charm-view.js";
@@ -29,6 +30,7 @@ import {
   renderNoraResult,
   renderOpening,
   renderResult,
+  renderReward,
   renderTitle,
 } from "../ui/views.js";
 
@@ -48,6 +50,7 @@ export type ScreenName =
   | "map"
   | "event"
   | "camp"
+  | "reward"
   | "result"
   | "gameover";
 
@@ -85,6 +88,13 @@ export class Game {
   activeNodeId: string | null = null; // いま解決中のノード（戦闘/とろかし/イベント/野営地）。null＝プロローグ中
   mapNotice = ""; // マップ画面上部に出す直近の結果（「○○を退けた」等）
   currentEvent: EventDef | null = null;
+
+  // ── 戦闘報酬（docs/03）──
+  rewardOffer: RewardOffer | null = null;
+  rewardRevealed = false; // 中央ブラインド枠を開いたか
+  private rewardReturnNode: string | null = null; // 報酬後に戻るノード
+  private rewardNotice = ""; // 報酬後にマップへ出す結果文
+  private cardSeq = 0; // 入手カードの個体ID採番
 
   /** charm 画面を描画中か（battle 画面と区別するための内部フラグ）。 */
   screenCharm = false;
@@ -136,6 +146,8 @@ export class Game {
     this.activeNodeId = null;
     this.mapNotice = "";
     this.currentEvent = null;
+    this.rewardOffer = null;
+    this.rewardReturnNode = null;
     this.screenCharm = false;
     this.screen = "title";
     this.render();
@@ -407,7 +419,7 @@ export class Game {
           this.screen = "result"; // 大しかばね撃破＝クリア
         } else {
           const names = this.battle.enemies.map((e) => e.name).join("・");
-          this.advanceTo(this.activeNodeId, `${names}を退けた`);
+          this.offerReward(this.activeNodeId, `${names}を退けた`); // 戦闘報酬（3択）→マップ
           return;
         }
       }
@@ -416,6 +428,64 @@ export class Game {
       return;
     }
     this.render();
+  }
+
+  // ── 戦闘報酬（3択）────────────────────────────────────────────
+
+  /** 通常戦闘勝利後、ドロップ候補から3枚提示する（docs/03「戦闘報酬」）。 */
+  private offerReward(returnNode: string, notice: string): void {
+    this.rewardOffer = generateReward(this.db.rewards.dropPool, this.battleRng);
+    this.rewardRevealed = false;
+    this.rewardReturnNode = returnNode;
+    this.rewardNotice = notice;
+    this.screen = "reward";
+    this.render();
+  }
+
+  /** 報酬カードの中身（ブラインド枠はrevealするまで非表示）。UI用。 */
+  rewardCardName(index: number): string | null {
+    const id = this.rewardOffer?.cardIds[index];
+    if (!id) return null;
+    if (index === this.rewardOffer!.blindIndex && !this.rewardRevealed) return null; // ブラインド
+    return this.db.cards.get(id)?.name ?? id;
+  }
+
+  /** ブラインド枠を開く（1タップ目）。 */
+  revealReward(): void {
+    if (!this.rewardOffer) return;
+    this.rewardRevealed = true;
+    this.render();
+  }
+
+  /** 提示カードの1枚をデッキへ加える。 */
+  chooseReward(index: number): void {
+    const id = this.rewardOffer?.cardIds[index];
+    if (!id) return;
+    if (index === this.rewardOffer!.blindIndex && !this.rewardRevealed) {
+      this.revealReward(); // ブラインドは一度開いてから選ぶ
+      return;
+    }
+    const def = this.db.cards.get(id);
+    this.cardSeq += 1;
+    const inst = def?.uses != null
+      ? { uid: `${id}@drop${this.cardSeq}`, defId: id, usesLeft: def.uses }
+      : { uid: `${id}@drop${this.cardSeq}`, defId: id };
+    this.run.deck.push(inst);
+    const name = def?.name ?? id;
+    this.finishReward(`${this.rewardNotice}（${name}を入手）`);
+  }
+
+  /** 報酬を受け取らずに進む（デッキ膨張防止）。 */
+  skipReward(): void {
+    this.finishReward(this.rewardNotice);
+  }
+
+  private finishReward(notice: string): void {
+    const node = this.rewardReturnNode;
+    this.rewardOffer = null;
+    this.rewardReturnNode = null;
+    if (node) this.advanceTo(node, notice);
+    else this.enterMap();
   }
 
   // ── とろかしバトルの操作 ────────────────────────────────────
@@ -551,6 +621,7 @@ export class Game {
       case "map": renderMap(this, this.root); break;
       case "event": renderEvent(this, this.root); break;
       case "camp": renderCamp(this, this.root); break;
+      case "reward": renderReward(this, this.root); break;
       case "result": renderResult(this, this.root); break;
       case "gameover": renderGameOver(this, this.root); break;
     }
