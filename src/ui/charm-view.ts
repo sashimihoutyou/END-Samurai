@@ -24,7 +24,15 @@ export function describeCharmEvent(db: ContentDB, state: CharmBattleState, ev: C
   const nm = (uid: string): string => enemyName(state, uid);
   switch (ev.type) {
     case "TurnStarted": return `── ターン${ev.turn} ──`;
-    case "SexCardPlayed": return `▶ ${db.sexCards.get(ev.cardId)?.name ?? ev.cardId}`;
+    case "SexCardPlayed": {
+      const card = db.sexCards.get(ev.cardId);
+      const head = `▶ ${card?.name ?? ev.cardId}`;
+      // 性技ごとの相手リアクション（docs/09 サンプル台詞集 §3）。属性は裏管理なのでログには出さず台詞だけ拾う。
+      const attr = card?.attrs[0];
+      const target = state.enemies.find((e) => !e.defeated) ?? state.enemies[0];
+      const react = attr && target ? tPick(db, `charm.hit.${target.defId}.${attr}`) : undefined;
+      return react ? `${head}\n　${react}` : head;
+    }
     case "QiDamageDealt": {
       const e = state.enemies.find((x) => x.uid === ev.enemyUid);
       const label = e ? stageLabel(db, nm(ev.enemyUid), ev.stage) : null;
@@ -50,12 +58,18 @@ export function describeCharmEvent(db: ContentDB, state: CharmBattleState, ev: C
     case "EnemyExhausted": return `　${nm(ev.enemyUid)}は気力を使い果たした……（放心）`;
     case "SextechPointGained": return tLine(db, "charm.sextech.gained");
     case "TodomeReady": return `　★ ${nm(ev.enemyUid)}に『とどめ！』を刺せる`;
-    case "TodomeUsed": return `▶ とどめ！　——決着`;
+    case "TodomeUsed": {
+      const e = state.enemies.find((x) => x.uid === ev.enemyUid);
+      const line = e ? tPick(db, `charm.todome.${e.defId}`) : null;
+      return line ? `▶ とどめ！\n　${line}` : `▶ とどめ！　——決着`;
+    }
     case "CompanionJoined": return null; // リザルト画面で描く
     case "EnemyActed": {
       const e = state.enemies.find((x) => x.uid === ev.enemyUid);
       const intent = e?.intents.find((i) => i.id === ev.intentId);
-      return `◀ ${nm(ev.enemyUid)}：${escapeHtml(intent?.label ?? ev.intentId)}`;
+      const base = `◀ ${nm(ev.enemyUid)}：${escapeHtml(intent?.label ?? ev.intentId)}`;
+      const taunt = e ? tPick(db, `charm.taunt.${e.defId}`) : null;
+      return taunt ? `${base}\n　${taunt}` : base;
     }
     case "StatusApplied": return `　こゆきは「${ev.status}」を受けた`;
     case "WeaknessReaction": return tPick(db, `charm.reaction.${ev.enemyDefId}.${ev.attr}`) ?? null;
