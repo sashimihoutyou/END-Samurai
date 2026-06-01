@@ -1,0 +1,68 @@
+[
+  {
+    "id": "onsen_minna",
+    "partnerId": "musume_shikabane",
+    "partnerSource": "rescued",
+    "introKey": "onsen.minna.intro",
+    "rewardPart": "mi",
+    "rewardPoints": 2,
+    "stages": [
+      {
+        "textKey": "onsen.minna.s1",
+        "choices": [
+          { "labelKey": "onsen.minna.s1.a", "correct": true, "resultKey": "onsen.minna.s1.a.res" },
+          { "labelKey": "onsen.minna.s1.b", "correct": false, "resultKey": "onsen.minna.s1.b.res" }
+        ]
+      },
+      {
+        "textKey": "onsen.minna.s2",
+        "choices": [
+          { "labelKey": "onsen.minna.s2.a", "correct": false, "resultKey": "onsen.minna.s2.a.res" },
+          { "labelKey": "onsen.minna.s2.b", "correct": true, "resultKey": "onsen.minna.s2.b.res" }
+        ]
+      },
+      {
+        "textKey": "onsen.minna.s3",
+        "choices": [
+          { "labelKey": "onsen.minna.s3.a", "correct": true, "resultKey": "onsen.minna.s3.a.res" },
+          { "labelKey": "onsen.minna.s3.b", "correct": false, "resultKey": "onsen.minna.s3.b.res" }
+        ]
+      }
+    ],
+    "leadOutcomeKey": "onsen.minna.lead",
+    "indulgentOutcomeKey": "onsen.minna.indulgent"
+  },
+  {
+    "id": "onsen_otoyo",
+    "partnerId": "otoyo",
+    "partnerSource": "companion",
+    "introKey": "onsen.otoyo.intro",
+    "rewardPart": "shinogi",
+    "rewardPoints": 1,
+    "stages": [
+      {
+        "textKey": "onsen.otoyo.s1",
+        "choices": [
+          { "labelKey": "onsen.otoyo.s1.a", "correct": true, "resultKey": "onsen.otoyo.s1.a.res" },
+          { "labelKey": "onsen.otoyo.s1.b", "correct": false, "resultKey": "onsen.otoyo.s1.b.res" }
+        ]
+      },
+      {
+        "textKey": "onsen.otoyo.s2",
+        "choices": [
+          { "labelKey": "onsen.otoyo.s2.a", "correct": true, "resultKey": "onsen.otoyo.s2.a.res" },
+          { "labelKey": "onsen.otoyo.s2.b", "correct": false, "resultKey": "onsen.otoyo.s2.b.res" }
+        ]
+      },
+      {
+        "textKey": "onsen.otoyo.s3",
+        "choices": [
+          { "labelKey": "onsen.otoyo.s3.a", "correct": false, "resultKey": "onsen.otoyo.s3.a.res" },
+          { "labelKey": "onsen.otoyo.s3.b", "correct": true, "resultKey": "onsen.otoyo.s3.b.res" }
+        ]
+      }
+    ],
+    "leadOutcomeKey": "onsen.otoyo.lead",
+    "indulgentOutcomeKey": "onsen.otoyo.indulgent"
+  }
+]

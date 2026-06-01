@@ -181,12 +181,13 @@ export const textSchema = z.record(z.union([z.string(), z.array(z.string())]));
 
 const mapNodeSchema = z.object({
   id: z.string(),
-  type: z.enum(["start", "battle", "boss", "camp", "rest", "charm_encounter", "event"]),
+  type: z.enum(["start", "battle", "boss", "camp", "rest", "charm_encounter", "event", "onsen"]),
   label: z.string(),
   next: z.array(z.string()),
   textKey: z.string().optional(),
   enemyGroup: z.array(z.string()).optional(),
   eventId: z.string().optional(),
+  onsenIds: z.array(z.string()).optional(),
   heal: z.number().int().positive().optional(),
 });
 
@@ -210,6 +211,29 @@ export const eventDefSchema = z.object({
   choices: z.array(z.object({ labelKey: z.string(), outcome: eventOutcomeSchema })).nonempty(),
 });
 
+// 温泉イベント（docs/05 リメイク）。複数段の選択式エロシーン。
+const sextechPart = z.enum(["mi", "shinogi", "kissaki"]);
+const onsenChoiceSchema = z.object({
+  labelKey: z.string(),
+  correct: z.boolean(),
+  resultKey: z.string(),
+});
+const onsenStageSchema = z.object({
+  textKey: z.string(),
+  choices: z.array(onsenChoiceSchema).min(2),
+});
+export const onsenEventSchema = z.object({
+  id: z.string(),
+  partnerId: z.string(),
+  partnerSource: z.enum(["companion", "rescued"]),
+  introKey: z.string(),
+  stages: z.array(onsenStageSchema).nonempty(),
+  rewardPart: sextechPart,
+  rewardPoints: z.number().int().positive(),
+  leadOutcomeKey: z.string(),
+  indulgentOutcomeKey: z.string(),
+});
+
 // 戦闘報酬（docs/03「戦闘報酬」・docs/08 §10 ドロップ候補）。
 export const rewardsSchema = z.object({
   dropPool: z.array(z.string()).nonempty(), // 田舎で入手しうるカードID
@@ -224,6 +248,7 @@ export const contentSchema = z.object({
   charmEnemies: z.array(charmEnemyDefSchema).nonempty(),
   maps: z.array(mapDefSchema).nonempty(),
   events: z.array(eventDefSchema).nonempty(),
+  onsen: z.array(onsenEventSchema).nonempty(),
   companions: z.array(companionDefSchema).nonempty(),
   rewards: rewardsSchema,
   text: textSchema,

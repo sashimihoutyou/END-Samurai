@@ -10,7 +10,8 @@ export type NodeType =
   | "camp" // 野営地（お豊：刀の完全修繕＋小休息）
   | "rest" // 休息（HP回復のみ）
   | "charm_encounter" // とろかし遭遇（イベント経由でとろかし戦へ）
-  | "event"; // 会話イベント（選択肢で分岐）
+  | "event" // 会話イベント（選択肢で分岐）
+  | "onsen"; // 温泉（複数段の選択式エロシーン。docs/05「温泉イベント」リメイク）
 
 /** マップ1マス。type ごとに参照するペイロードが変わる（docs/08 §2.7）。 */
 export interface MapNode {
@@ -26,6 +27,8 @@ export interface MapNode {
   enemyGroup?: string[];
   /** event/charm_encounter：参照するイベントID。 */
   eventId?: string;
+  /** onsen：参照する温泉イベントID（複数候補。条件を満たす最初の1つを使う）。 */
+  onsenIds?: string[];
   /** rest：HP回復量。 */
   heal?: number;
 }

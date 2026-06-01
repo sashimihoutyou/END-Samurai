@@ -3,6 +3,7 @@ import type { EnemyDef } from "../model/enemy.js";
 import type { CharmEnemyDef, SexCardDef } from "../model/charm.js";
 import type { CompanionDef } from "../model/companion.js";
 import type { EventDef, MapDef } from "../model/map.js";
+import type { OnsenEvent } from "../model/onsen.js";
 import type { SwordPart, SwordPartStages, SwordStage } from "../model/sword.js";
 import { contentSchema, type CombatConfig, type Content, type TextData } from "./schema.js";
 
@@ -18,6 +19,7 @@ export interface ContentDB {
   charmEnemies: ReadonlyMap<string, CharmEnemyDef>;
   maps: ReadonlyMap<string, MapDef>;
   events: ReadonlyMap<string, EventDef>;
+  onsen: ReadonlyMap<string, OnsenEvent>;
   companions: ReadonlyMap<string, CompanionDef>;
   rewards: { dropPool: string[] };
   text: TextData;
@@ -93,7 +95,13 @@ export function loadContent(raw: unknown): ContentDB {
     companions.set(c.id, c as CompanionDef);
   }
 
-  return { combat: parsed.combat, cards, enemies, swordStages, sexCards, charmEnemies, maps, events, companions, rewards: parsed.rewards, text: parsed.text };
+  const onsen = new Map<string, OnsenEvent>();
+  for (const o of parsed.onsen) {
+    if (onsen.has(o.id)) throw new Error(`重複する温泉イベントID: ${o.id}`);
+    onsen.set(o.id, o as OnsenEvent);
+  }
+
+  return { combat: parsed.combat, cards, enemies, swordStages, sexCards, charmEnemies, maps, events, onsen, companions, rewards: parsed.rewards, text: parsed.text };
 }
 
 /** 指定部位の段階定義を引く。未知のIDはエラー（フェイルファスト）。 */

@@ -147,6 +147,7 @@ const NODE_TAG: Record<NodeType, string> = {
   rest: "休息",
   charm_encounter: "遭遇",
   event: "イベント",
+  onsen: "温泉",
 };
 
 export function renderMap(game: Game, root: HTMLElement): void {
@@ -266,6 +267,77 @@ export function renderReward(game: Game, root: HTMLElement): void {
     btn.addEventListener("click", () => game.chooseReward(Number(btn.dataset.reward)));
   });
   root.querySelector<HTMLButtonElement>("#skip")?.addEventListener("click", () => game.skipReward());
+}
+
+export function renderOnsen(game: Game, root: HTMLElement): void {
+  const db = game.db;
+  const ev = game.onsenEvent;
+  if (!ev) return;
+
+  // 導入：ページ送り
+  if (game.onsenPhase === "intro") {
+    const pages = tLines(db, ev.introKey);
+    const last = game.page >= pages.length - 1;
+    root.innerHTML = `
+      <div class="screen narration-screen onsen">
+        <h1>♨ 山あいの湯けむり</h1>
+        <p class="narration">${escapeHtml(pages[game.page])}</p>
+        ${pageDots(game.page, pages.length)}
+        <button id="next" class="bigbtn pink">${last ? "湯に身を沈める" : "次へ"}</button>
+      </div>`;
+    root.querySelector<HTMLButtonElement>("#next")?.addEventListener("click", () => game.onsenIntroNext(pages.length));
+    return;
+  }
+
+  // 各段の選択
+  if (game.onsenPhase === "stage") {
+    const stage = game.onsenStage()!;
+    const choices = stage.choices
+      .map((c, i) => `<button class="bigbtn pink" data-choice="${i}">${escapeHtml(tLine(db, c.labelKey))}</button>`)
+      .join("");
+    root.innerHTML = `
+      <div class="screen narration-screen onsen">
+        <h1>♨ 湯けむりのなか</h1>
+        <p class="narration">${escapeHtml(tLine(db, stage.textKey))}</p>
+        <p class="hint">どうする？</p>
+        <div class="map-choices">${choices}</div>
+      </div>`;
+    root.querySelectorAll<HTMLButtonElement>("[data-choice]").forEach((btn) => {
+      btn.addEventListener("click", () => game.chooseOnsen(Number(btn.dataset.choice)));
+    });
+    return;
+  }
+
+  // 選択の反応
+  if (game.onsenPhase === "choiceResult") {
+    root.innerHTML = `
+      <div class="screen narration-screen onsen">
+        <h1>♨ 湯けむりのなか</h1>
+        <p class="narration">${escapeHtml(tLine(db, game.onsenLastResultKey))}</p>
+        <button id="next" class="bigbtn pink">続ける</button>
+      </div>`;
+    root.querySelector<HTMLButtonElement>("#next")?.addEventListener("click", () => game.onsenChoiceContinue());
+    return;
+  }
+
+  // 結末（lead / indulgent）：ページ送り
+  const lead = game.onsenResult?.outcome === "lead";
+  const pages = tLines(db, lead ? ev.leadOutcomeKey : ev.indulgentOutcomeKey);
+  const last = game.page >= pages.length - 1;
+  const footer = last
+    ? lead
+      ? `<p class="result-stat">せっくすてく 身${game.run.sextech.mi}・鎬${game.run.sextech.shinogi}・切先${game.run.sextech.kissaki}　／　こゆき HP ${game.run.hp}/${game.run.maxHp}</p>`
+      : `<p class="result-stat">こゆき HP ${game.run.hp}/${game.run.maxHp}（全回復）</p>`
+    : "";
+  root.innerHTML = `
+    <div class="screen narration-screen onsen">
+      <h1>${lead ? "♨ 先に、蕩かしきった" : "♨ たっぷり、蕩かされて"}</h1>
+      <p class="narration">${escapeHtml(pages[game.page])}</p>
+      ${pageDots(game.page, pages.length)}
+      ${footer}
+      <button id="next" class="bigbtn">${last ? "湯から上がる" : "次へ"}</button>
+    </div>`;
+  root.querySelector<HTMLButtonElement>("#next")?.addEventListener("click", () => game.onsenOutcomeNext(pages.length));
 }
 
 export function renderResult(game: Game, root: HTMLElement): void {
