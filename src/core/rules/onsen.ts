@@ -29,15 +29,19 @@ export function maxOnsenScore(event: OnsenEvent): number {
 /**
  * 合計スコアが閾値以上なら lead（相手が気絶するまで絶頂・こゆきが自信と経験を積む）、
  * 未満なら indulgent（攻守逆転・相手主導で蕩かされる）。せっくすてく獲得はスコア比例。
- * いずれの結末も温泉ゆえ全回復する。
+ *
+ * 回復はミニゲームの懸け金（docs/10「全回復のトレードオフ化」）：
+ *  - lead → fullHeal=true（全回復＋刀の打ち直し）。主導できた褒美。
+ *  - indulgent → fullHeal=false（蕩かされて回復は中途半端＝App層で部分回復のみ）。
  */
 export function resolveOnsen(event: OnsenEvent, totalScore: number): OnsenResult {
   const score = Math.max(0, totalScore);
+  const lead = score >= event.threshold;
   return {
-    outcome: score >= event.threshold ? "lead" : "indulgent",
+    outcome: lead ? "lead" : "indulgent",
     score,
     sextechPart: event.rewardPart,
     sextechGain: Math.floor(score / event.rewardDivisor),
-    fullHeal: true,
+    fullHeal: lead,
   };
 }

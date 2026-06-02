@@ -42,6 +42,7 @@ export interface BattleState {
   apDiscount: number; // 技カードのAP軽減（葵アクティブ「型稽古」。この戦闘中）
   degradeShield: number; // 刀部位デバフを無効化できる残り回数（お豊アクティブ「打ち直し」）
   companionUsed: string[]; // この戦闘で使用済みの仲間アクティブのカードID（1戦闘1回）
+  attackHits: number; // この戦闘で刀身が斬った回数。閾値ごとに刃が摩耗する（docs/10「刃の摩耗」）
   phase: BattlePhase;
 }
 

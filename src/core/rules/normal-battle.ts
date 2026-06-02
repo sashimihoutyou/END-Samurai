@@ -155,6 +155,7 @@ export function startBattle(db: ContentDB, setup: BattleSetup, rng: Rng): Result
     apDiscount: 0,
     degradeShield: 0,
     companionUsed: [],
+    attackHits: 0,
     phase: "player",
   };
   // 予告ランダム型（docs/01「予告ランダム型」）：初期予告を抽選する。
@@ -230,6 +231,21 @@ function repairPart(db: ContentDB, sword: SwordState, part: SwordPart, capId?: s
   const from = sword[part];
   sword[part] = toId;
   return { from, to: toId };
+}
+
+/**
+ * 刃の摩耗（docs/10「刀メンテを緊張の核に」）：斬撃のたびにカウントし、閾値（bladeWearPerHits）に
+ * 達したら刀身を1段階鈍らせる。雑魚は数手で倒れるため発動せず、長丁場（エリート・ボス）でじわじわ効く。
+ * 自分の「使用」による摩耗なので、敵デバフ用の打ち直し盾（degradeShield）では防げない。
+ */
+function wearBlade(db: ContentDB, state: BattleState, events: BattleEvent[]): void {
+  const per = db.combat.bladeWearPerHits;
+  if (per <= 0) return;
+  state.attackHits += 1;
+  if (state.attackHits < per) return;
+  state.attackHits = 0;
+  const d = degradePart(db, state.sword, "blade");
+  if (d) events.push({ type: "PartDegraded", part: "blade", from: d.from, to: d.to });
 }
 
 function cardDef(db: ContentDB, inst: CardInstance): CardDef {
@@ -329,6 +345,7 @@ export function playCard(db: ContentDB, input: BattleState, cardUid: string, tar
           last = t.uid;
         }
         if (last) tryCombo(db, state, last, power, effect.multiplier, events, rng);
+        wearBlade(db, state, events); // 斬るたびに刃が摩耗（閾値で1段階鈍る）。docs/10「刃の摩耗」
         break;
       }
       case "fixed_damage": {

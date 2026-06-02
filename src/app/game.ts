@@ -64,6 +64,7 @@ export type ScreenName =
 export type OnsenPhase = "intro" | "stage" | "choiceResult" | "outcome";
 
 const RUN_SEED = 0x5a3c19; // ラン全体の基準シード。各戦闘はノードIDから派生した決定論的シードを使う。
+const ONSEN_INDULGENT_RATIO = 0.6; // indulgent（蕩かされ）の回復上限＝最大HPの割合（docs/10「全回復のトレードオフ化」）。
 
 /** 文字列から決定論的な32bitシードを得る（FNV-1a）。Godot移植時も同手順で再現可能。 */
 function hashSeed(s: string): number {
@@ -641,9 +642,16 @@ export class Game {
       this.run.sextech[result.sextechPart] += result.sextechGain;
     }
     if (result.fullHeal) {
-      this.run.hp = this.run.maxHp; // HP全回復
+      // lead：主導できた褒美として全回復＋刀打ち直し＋衣を整える。
+      this.run.hp = this.run.maxHp;
       this.run.sword = { ...this.run.swordGrade }; // 刀も打ち直し（装備パーツの等級まで）
-      this.run.costume = "normal"; // 衣も整う
+      this.run.costume = "normal";
+    } else {
+      // indulgent：蕩かされて回復は中途半端。最大HPの ONSEN_INDULGENT_RATIO まで（下回っている時だけ引き上げ）。
+      // 刀の打ち直しは入らない＝ミニゲームの出来が刀メンテにも響く（docs/10「全回復のトレードオフ化」）。
+      const floor = Math.floor(this.run.maxHp * ONSEN_INDULGENT_RATIO);
+      this.run.hp = Math.max(this.run.hp, floor);
+      this.run.costume = "normal"; // 湯で衣だけは整う
     }
     this.onsenPhase = "outcome";
     this.page = 0;
@@ -660,8 +668,8 @@ export class Game {
     const gained = (this.onsenResult?.sextechGain ?? 0) > 0;
     const notice =
       this.onsenResult?.outcome === "lead"
-        ? `湯あがり、自信と経験を積んだ${gained ? "（せっくすてく獲得）" : ""}`
-        : `湯あがり、すっかり蕩かされて全回復した${gained ? "（せっくすてく獲得）" : ""}`;
+        ? `湯あがり、自信と経験を積んだ（全回復＋刀の打ち直し）${gained ? "／せっくすてく獲得" : ""}`
+        : `湯あがり、すっかり蕩かされた（回復は中途半端）${gained ? "／せっくすてく獲得" : ""}`;
     this.onsenEvent = null;
     this.onsenResult = null;
     this.onsenReturnNode = null;
@@ -742,12 +750,19 @@ export class Game {
         this.screen = "nora_result"; // プロローグ野犬戦
       } else {
         const node = this.findNode(this.activeNodeId);
+        // エリート撃破の永続報酬：最大HPを上げ、増えたぶんを回復（docs/10「ランの成長曲線」）。
+        let growth = "";
+        if (node?.maxHpReward) {
+          this.run.maxHp += node.maxHpReward;
+          this.run.hp += node.maxHpReward;
+          growth = `／胆力がついた（最大HP +${node.maxHpReward}）`;
+        }
         if (node?.type === "boss") {
           this.screen = "result"; // 大しかばね撃破＝クリア
         } else {
           const names = this.battle.enemies.map((e) => e.name).join("・");
           const suffix = bounty > 0 ? `（+${bounty}銭）` : "";
-          this.offerReward(this.activeNodeId, `${names}を退けた${suffix}`); // 戦闘報酬（3択）→マップ
+          this.offerReward(this.activeNodeId, `${names}を退けた${suffix}${growth}`); // 戦闘報酬（3択）→マップ
           return;
         }
       }

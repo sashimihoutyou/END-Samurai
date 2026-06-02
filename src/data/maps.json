@@ -44,6 +44,7 @@
         "type": "battle",
         "label": "旧戦場跡（亡霊武者）",
         "enemyGroup": ["akuryo_musha"],
+        "maxHpReward": 6,
         "next": ["c_aoi"]
       },
       {

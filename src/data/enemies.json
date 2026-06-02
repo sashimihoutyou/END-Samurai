@@ -199,9 +199,12 @@
       },
       {
         "id": "buchikamashi",
-        "label": "ぶちかまし",
+        "label": "ぶちかまし（刃を削る）",
         "icon": "smash",
-        "effects": [{ "kind": "damage", "amount": 11 }]
+        "effects": [
+          { "kind": "damage", "amount": 11 },
+          { "kind": "degrade_part", "part": "blade", "chance": 1.0 }
+        ]
       },
       {
         "id": "tsukami",

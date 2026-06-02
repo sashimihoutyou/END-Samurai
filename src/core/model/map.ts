@@ -31,6 +31,8 @@ export interface MapNode {
   onsenIds?: string[];
   /** rest：HP回復量。 */
   heal?: number;
+  /** battle/boss：撃破時に最大HPを永続的に増やす量（docs/10「ランの成長曲線」。エリート報酬）。 */
+  maxHpReward?: number;
 }
 
 export interface MapDef {
