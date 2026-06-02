@@ -46,7 +46,10 @@
       "stock": [
         { "cardId": "kuzushi_uchi", "price": 18 },
         { "cardId": "nagiharai", "price": 20 },
-        { "cardId": "kesagiri", "price": 22 }
+        { "cardId": "kesagiri", "price": 22 },
+        { "cardId": "seigan", "price": 12 },
+        { "cardId": "kirisaku", "price": 18 },
+        { "cardId": "iai", "price": 24 }
       ]
     }
   ]

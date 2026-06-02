@@ -148,10 +148,45 @@
     ]
   },
   {
+    "id": "akuryo_musha",
+    "name": "亡霊武者",
+    "archetype": "random_intent",
+    "hp": 26,
+    "defense": 2,
+    "bounty": 22,
+    "intents": [
+      {
+        "id": "daijodan",
+        "label": "大上段に振りかぶる（柄狙い）",
+        "icon": "smash",
+        "telegraphPart": "tsuka",
+        "effects": [
+          { "kind": "damage", "amount": 6 },
+          { "kind": "degrade_part", "part": "tsuka", "chance": 1.0 }
+        ]
+      },
+      {
+        "id": "naginata",
+        "label": "薙ぎ払い",
+        "icon": "smash",
+        "effects": [{ "kind": "damage", "amount": 9 }]
+      },
+      {
+        "id": "tsuranuki",
+        "label": "刺し貫き（出血）",
+        "icon": "bite",
+        "effects": [
+          { "kind": "damage", "amount": 5 },
+          { "kind": "apply_status", "status": "bleed", "x": 2 }
+        ]
+      }
+    ]
+  },
+  {
     "id": "oo_shikabane",
     "name": "大しかばね",
-    "archetype": "cyclic",
-    "hp": 32,
+    "archetype": "random_intent",
+    "hp": 40,
     "defense": 0,
     "bounty": 40,
     "isBoss": true,
@@ -161,6 +196,12 @@
         "label": "打撃",
         "icon": "smash",
         "effects": [{ "kind": "damage", "amount": 7 }]
+      },
+      {
+        "id": "buchikamashi",
+        "label": "ぶちかまし",
+        "icon": "smash",
+        "effects": [{ "kind": "damage", "amount": 11 }]
       },
       {
         "id": "tsukami",

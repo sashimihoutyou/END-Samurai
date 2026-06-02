@@ -37,7 +37,14 @@
         "type": "camp",
         "label": "谷間の野営地",
         "textKey": "map.inaka.camp",
-        "next": ["c_oihagi", "c_yoromeku"]
+        "next": ["c_oihagi", "c_yoromeku", "c_elite"]
+      },
+      {
+        "id": "c_elite",
+        "type": "battle",
+        "label": "旧戦場跡（亡霊武者）",
+        "enemyGroup": ["akuryo_musha"],
+        "next": ["c_aoi"]
       },
       {
         "id": "c_oihagi",

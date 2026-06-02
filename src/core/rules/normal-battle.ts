@@ -157,6 +157,11 @@ export function startBattle(db: ContentDB, setup: BattleSetup, rng: Rng): Result
     companionUsed: [],
     phase: "player",
   };
+  // 予告ランダム型（docs/01「予告ランダム型」）：初期予告を抽選する。
+  // 表示される予告＝この敵ターンに実行される行動（予告とのズレを作らない）。
+  for (const e of state.enemies) {
+    if (e.archetype === "random_intent") e.intentIndex = rng.int(e.intents.length);
+  }
   drawToHandLimit(state, db, rng);
   const events: BattleEvent[] = [{ type: "TurnStarted", turn: 1 }];
   applyCompanionPassives(db, state, setup.companions ?? [], events);
@@ -538,6 +543,9 @@ export function endTurn(db: ContentDB, input: BattleState, rng: Rng): Result {
     // 周期型・狙撃型：次の予告へ進める。
     if (enemy.archetype === "cyclic" || enemy.archetype === "sniper") {
       enemy.intentIndex = (enemy.intentIndex + 1) % enemy.intents.length;
+    } else if (enemy.archetype === "random_intent") {
+      // 予告ランダム型：次ターンの予告を抽選し直す（実行後に確定＝次の予告表示と一致）。
+      enemy.intentIndex = rng.int(enemy.intents.length);
     }
 
     if (state.hp <= 0) {

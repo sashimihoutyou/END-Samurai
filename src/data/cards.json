@@ -143,6 +143,40 @@
     ]
   },
   {
+    "id": "kirisaku",
+    "name": "斬り裂く",
+    "category": "skill",
+    "ap": 2,
+    "target": "single",
+    "value": 16,
+    "flavorKey": "card.kirisaku.flavor",
+    "effects": [
+      { "kind": "attack", "multiplier": 0.6 },
+      { "kind": "apply_status", "status": "bleed", "x": 3, "toTarget": true }
+    ]
+  },
+  {
+    "id": "seigan",
+    "name": "正眼の構え",
+    "category": "skill",
+    "ap": 1,
+    "target": "self",
+    "value": 12,
+    "flavorKey": "card.seigan.flavor",
+    "effects": [{ "kind": "buff_attack", "amount": 2 }]
+  },
+  {
+    "id": "iai",
+    "name": "居合",
+    "category": "skill",
+    "ap": 2,
+    "target": "single",
+    "value": 26,
+    "flavorKey": "card.iai.flavor",
+    "requirements": [{ "kind": "no_action_last_turn" }],
+    "effects": [{ "kind": "attack", "multiplier": 2.0 }]
+  },
+  {
     "id": "uchinaoshi",
     "name": "打ち直し",
     "category": "companion_active",
