@@ -2,7 +2,8 @@ import type { SwordPart } from "./sword.js";
 import type { StatusId, StatusInstance } from "./status.js";
 
 // 敵定義。docs/01「敵行動アーキタイプ」の6型を archetype として持つ。
-// α版は cyclic（周期型）/ sniper（狙撃型）を解釈する。他の型は後続フェーズで追加。
+// cyclic（周期）/ sniper（狙撃）/ random_intent（予告ランダム）/ timed（時限）/
+// concealed（隠匿・くびなし）/ synergy（連携）の6型すべてを normal-battle.ts が解釈する。
 
 export type EnemyArchetype =
   | "cyclic"
@@ -37,6 +38,11 @@ export interface EnemyDef {
   bounty?: number; // 撃破時に得る銭（docs/03「経済システム」。省略＝0）
   charmTarget?: boolean; // 魅了遭遇イベント対象か
   isBoss?: boolean;
+  // timed（時限型）：intents[0]＝溜め／intents[last]＝大技。fuse ターン溜めて確定発動する。
+  fuse?: number;
+  selfDestruct?: boolean; // timed：大技発動後に自壊する（自爆しかばね）。false/省略＝fuse をリセットしてループ。
+  // synergy（連携型）：生存している味方が1体でもいる間、与ダメージにこのボーナスが乗る。
+  synergyBonus?: number;
 }
 
 /** 戦闘中の敵個体。 */
@@ -51,4 +57,5 @@ export interface EnemyInstance {
   intents: IntentDef[];
   intentIndex: number; // 次に実行する予告（cyclic はこれをループ）
   statuses: StatusInstance[]; // 敵に付与された状態異常（出血DoT・気絶スキップ）
+  fuse?: number; // timed：大技発動までの残りターン（予告に表示）。
 }

@@ -54,6 +54,8 @@ export function describeBattleEvent(db: ContentDB, state: BattleState, ev: Battl
     case "CompanionBuff": return `　🤝 ${COMPANION_NAME[ev.companionId] ?? ev.companionId}：${ev.label}`;
     case "HandUpgraded": return `　✨ ${db.cards.get(ev.fromCardId)?.name ?? ev.fromCardId} → ${db.cards.get(ev.toCardId)?.name ?? ev.toCardId}`;
     case "DegradeNullified": return `　🛡 ${PART_NAME[ev.part]}へのデバフを打ち直しで防いだ`;
+    case "SynergyAmplified": return `　🔗 ${enemyName(ev.enemyUid)}は味方と連携して攻撃が鋭くなった（+${ev.amount}）`;
+    case "ConcealNullified": return `　🛡 受け切って ${enemyName(ev.enemyUid)} の随伴効果を防いだ`;
     case "KoyukiReaction": return `　「${ev.reactionKey}」`;
     case "BattleWon": return `🎉 戦闘に勝利！`;
     case "BattleLost": return `💀 こゆきは倒れた……`;
@@ -67,7 +69,14 @@ function stageName(db: ContentDB, sword: BattleState["sword"], part: SwordPart):
 function intentSummary(e: BattleState["enemies"][number]): string {
   const intent = e.intents[e.intentIndex];
   const dmg = intent.effects.reduce((s, x) => s + (x.kind === "damage" ? x.amount : 0), 0);
-  return dmg > 0 ? `${dmg}ダメージ` : "―";
+  const parts: string[] = [dmg > 0 ? `${dmg}ダメージ` : "―"];
+  // 隠匿型：随伴効果は伏せる（数値は表示・効果種別は「？」）。docs/01「隠匿型」。
+  if (intent.concealEffect) parts.push("随伴：？");
+  // 時限型：大技までの残りターンを警告表示。docs/01「時限型」。
+  if (e.archetype === "timed" && e.fuse != null) {
+    parts.push(e.intentIndex === e.intents.length - 1 ? "⚠発動！" : `あと${e.fuse}ターンで発動`);
+  }
+  return parts.join("／");
 }
 
 export function renderBattle(game: Game, root: HTMLElement): void {

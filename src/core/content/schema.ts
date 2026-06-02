@@ -12,6 +12,8 @@ export const combatConfigSchema = z.object({
   baseBladeAttack: z.number().int(),
   baseTsubaDefense: z.number().int(),
   handLimit: z.number().int().positive(),
+  // 刃の摩耗（docs/10「刀メンテを緊張の核に」）：このNだけ斬撃すると刀身が1段階鈍る（0=無効）。
+  bladeWearPerHits: z.number().int().nonnegative(),
 });
 
 const swordStageSchema = z.object({
@@ -107,6 +109,9 @@ export const enemyDefSchema = z.object({
   bounty: z.number().int().nonnegative().optional(),
   charmTarget: z.boolean().optional(),
   isBoss: z.boolean().optional(),
+  fuse: z.number().int().positive().optional(), // timed：大技までの溜めターン
+  selfDestruct: z.boolean().optional(), // timed：発動後に自壊
+  synergyBonus: z.number().int().positive().optional(), // synergy：味方生存中の与ダメ加算
 });
 
 // ── 魅了バトル（docs/02・08 §2.6）──────────────────────────────
@@ -191,6 +196,7 @@ const mapNodeSchema = z.object({
   eventId: z.string().optional(),
   onsenIds: z.array(z.string()).optional(),
   heal: z.number().int().positive().optional(),
+  maxHpReward: z.number().int().positive().optional(),
 });
 
 export const mapDefSchema = z.object({

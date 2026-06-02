@@ -66,9 +66,9 @@ describe("温泉シーンの結末判定（純粋関数）", () => {
     expect(resolveOnsen(ev, 10).sextechPart).toBe(ev.rewardPart);
   });
 
-  it("いずれの結末も全回復する", () => {
-    expect(resolveOnsen(ev, 10).fullHeal).toBe(true);
-    expect(resolveOnsen(ev, 0).fullHeal).toBe(true);
+  it("lead は全回復（fullHeal=true）、indulgent は部分回復（fullHeal=false）＝ミニゲームの懸け金", () => {
+    expect(resolveOnsen(ev, ev.threshold).fullHeal).toBe(true);
+    expect(resolveOnsen(ev, ev.threshold - 1).fullHeal).toBe(false);
   });
 
   it("全イベント5段構成で、最高スコアの総和が閾値を上回れる／全段最低だと閾値未満", () => {
@@ -148,13 +148,15 @@ describe("温泉イベントの進行（App層）", () => {
     expect(game.mapPos).toBe("c_onsen");
   });
 
-  it("好みを外し続ける（全段off）と攻守逆転（indulgent）、せっくすてく0でも全回復する", () => {
-    const game = startOnsenWith(["otoyo"], 0);
+  it("好みを外し続ける（全段off）と攻守逆転（indulgent）、回復は中途半端（最大HPの6割まで）", () => {
+    const game = startOnsenWith(["otoyo"], 0); // run.hp は 5 から
     playThrough(game, worstPicks(evOf("onsen_otoyo")));
     expect(game.onsenScore).toBe(0);
     expect(game.onsenResult?.outcome).toBe("indulgent");
     expect(game.run.sextech.shinogi).toBe(0);
-    expect(game.run.hp).toBe(game.run.maxHp); // それでも全回復
+    // 蕩かされて回復は中途半端：最大HP30の6割=18までしか戻らない（全回復しない）。
+    expect(game.run.hp).toBe(Math.floor(game.run.maxHp * 0.6));
+    expect(game.run.hp).toBeLessThan(game.run.maxHp);
   });
 
   it("中断はなく、必ず5段すべて選び切る", () => {

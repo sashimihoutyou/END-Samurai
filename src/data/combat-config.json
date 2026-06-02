@@ -3,5 +3,6 @@
   "baseMaxHp": 30,
   "baseBladeAttack": 6,
   "baseTsubaDefense": 3,
-  "handLimit": 5
+  "handLimit": 5,
+  "bladeWearPerHits": 5
 }

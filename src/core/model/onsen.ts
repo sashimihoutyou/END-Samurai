@@ -45,6 +45,6 @@ export interface OnsenResult {
   score: number; // 合計スコア
   sextechPart: keyof SextechState; // 伸びる部位
   sextechGain: number; // せっくすてく加算（スコア比例）
-  fullHeal: boolean; // 全回復するか（温泉なので常に true）
+  fullHeal: boolean; // 全回復＋刀打ち直しか（lead のみ true。indulgent は部分回復）。docs/10
 }
 

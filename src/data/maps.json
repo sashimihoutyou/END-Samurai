@@ -37,7 +37,22 @@
         "type": "camp",
         "label": "谷間の野営地",
         "textKey": "map.inaka.camp",
-        "next": ["c_oihagi", "c_yoromeku"]
+        "next": ["c_oihagi", "c_yoromeku", "c_elite", "c_jibaku"]
+      },
+      {
+        "id": "c_jibaku",
+        "type": "battle",
+        "label": "焼け跡（自爆しかばね）",
+        "enemyGroup": ["jibaku_shikabane"],
+        "next": ["c_aoi"]
+      },
+      {
+        "id": "c_elite",
+        "type": "battle",
+        "label": "旧戦場跡（亡霊武者）",
+        "enemyGroup": ["akuryo_musha"],
+        "maxHpReward": 6,
+        "next": ["c_aoi"]
       },
       {
         "id": "c_oihagi",
@@ -65,7 +80,14 @@
         "type": "onsen",
         "label": "山あいの湯けむり（温泉）",
         "onsenIds": ["onsen_otoyo", "onsen_aoi", "onsen_musume", "onsen_minna"],
-        "next": ["c_musume", "c_ueta"]
+        "next": ["c_musume", "c_ueta", "c_kubinashi"]
+      },
+      {
+        "id": "c_kubinashi",
+        "type": "battle",
+        "label": "墓場道（くびなししかばね）",
+        "enemyGroup": ["kubinashi_shikabane"],
+        "next": ["c_camp2"]
       },
       {
         "id": "c_musume",
@@ -86,7 +108,14 @@
         "type": "camp",
         "label": "峠の野営地",
         "textKey": "map.inaka.camp2",
-        "next": ["c_pack"]
+        "next": ["c_pack", "c_mure"]
+      },
+      {
+        "id": "c_mure",
+        "type": "battle",
+        "label": "峠の手前（群れしかばね×2）",
+        "enemyGroup": ["mure_shikabane", "mure_shikabane"],
+        "next": ["c_boss"]
       },
       {
         "id": "c_pack",
