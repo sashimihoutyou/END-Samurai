@@ -13,14 +13,24 @@ export interface RunCompanion {
   affection: Affection;
 }
 
+/** 所持している予備パーツ（各部位の段階IDの多重集合）。お豊のパーツ購入で増え、付け替えで装備に出し入れする。 */
+export interface PartInventory {
+  blade: string[];
+  tsuba: string[];
+  tsuka: string[];
+}
+
 export interface RunState {
   hp: number;
   maxHp: number;
-  sword: SwordState;
+  sword: SwordState; // 刀の現在状態（戦闘で摩耗する。各部位の現在段階ID）
+  swordGrade: SwordState; // 装備中パーツの等級（打ち直しで戻す上限。摩耗しても下がらない）。docs/03「パーツ交換」
+  parts: PartInventory; // 所持予備パーツ（未装備）。お豊のパーツ購入で増える
   costume: Costume; // 衣装破損段階（戦闘間で持続。docs/05）
   deck: CardInstance[];
   companions: RunCompanion[];
   sextech: SextechState;
   rescuedCount: number;
+  zeni: number; // 所持金（銭）。戦闘・温泉で得て、野営地の施設で使う。docs/03「経済システム」
   flags: Record<string, boolean>;
 }

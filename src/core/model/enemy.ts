@@ -34,6 +34,7 @@ export interface EnemyDef {
   hp: number;
   defense: number; // 敵の防御値（こゆきの与ダメージを実数値減算）
   intents: IntentDef[];
+  bounty?: number; // 撃破時に得る銭（docs/03「経済システム」。省略＝0）
   charmTarget?: boolean; // 魅了遭遇イベント対象か
   isBoss?: boolean;
 }

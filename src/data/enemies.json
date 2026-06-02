@@ -5,6 +5,7 @@
     "archetype": "cyclic",
     "hp": 13,
     "defense": 0,
+    "bounty": 10,
     "charmTarget": true,
     "intents": [
       {
@@ -30,6 +31,7 @@
     "archetype": "cyclic",
     "hp": 12,
     "defense": 0,
+    "bounty": 6,
     "charmTarget": false,
     "intents": [
       {
@@ -52,6 +54,7 @@
     "archetype": "sniper",
     "hp": 16,
     "defense": 0,
+    "bounty": 12,
     "intents": [
       {
         "id": "furikaburi",
@@ -72,11 +75,38 @@
     ]
   },
   {
+    "id": "oihagi",
+    "name": "追いはぎ",
+    "archetype": "sniper",
+    "hp": 15,
+    "defense": 1,
+    "bounty": 14,
+    "intents": [
+      {
+        "id": "yoroidooshi",
+        "label": "鎧通しを抜く（鍔狙い）",
+        "icon": "smash",
+        "telegraphPart": "tsuba",
+        "effects": [
+          { "kind": "damage", "amount": 4 },
+          { "kind": "degrade_part", "part": "tsuba", "chance": 1.0 }
+        ]
+      },
+      {
+        "id": "tsukikomi",
+        "label": "突き込み",
+        "icon": "hit",
+        "effects": [{ "kind": "damage", "amount": 5 }]
+      }
+    ]
+  },
+  {
     "id": "yoromeku_shikabane",
     "name": "よろめくしかばね",
     "archetype": "cyclic",
     "hp": 12,
     "defense": 0,
+    "bounty": 8,
     "intents": [
       {
         "id": "yoromeki",
@@ -93,11 +123,37 @@
     ]
   },
   {
+    "id": "ueta_shikabane",
+    "name": "飢えたしかばね",
+    "archetype": "cyclic",
+    "hp": 14,
+    "defense": 0,
+    "bounty": 9,
+    "intents": [
+      {
+        "id": "kajiritsuki",
+        "label": "かじりつき（出血）",
+        "icon": "bite",
+        "effects": [
+          { "kind": "damage", "amount": 4 },
+          { "kind": "apply_status", "status": "bleed", "x": 2 }
+        ]
+      },
+      {
+        "id": "umekiyori",
+        "label": "うめき寄り",
+        "icon": "stagger",
+        "effects": [{ "kind": "damage", "amount": 3 }]
+      }
+    ]
+  },
+  {
     "id": "oo_shikabane",
     "name": "大しかばね",
     "archetype": "cyclic",
     "hp": 32,
     "defense": 0,
+    "bounty": 40,
     "isBoss": true,
     "intents": [
       {

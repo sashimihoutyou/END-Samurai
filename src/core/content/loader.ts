@@ -4,6 +4,7 @@ import type { CharmEnemyDef, SexCardDef } from "../model/charm.js";
 import type { CompanionDef } from "../model/companion.js";
 import type { EventDef, MapDef } from "../model/map.js";
 import type { OnsenEvent } from "../model/onsen.js";
+import type { ShopData } from "../model/shop.js";
 import type { SwordPart, SwordPartStages, SwordStage } from "../model/sword.js";
 import { contentSchema, type CombatConfig, type Content, type TextData } from "./schema.js";
 
@@ -22,6 +23,7 @@ export interface ContentDB {
   onsen: ReadonlyMap<string, OnsenEvent>;
   companions: ReadonlyMap<string, CompanionDef>;
   rewards: { dropPool: string[] };
+  shops: ShopData;
   text: TextData;
 }
 
@@ -88,6 +90,30 @@ export function loadContent(raw: unknown): ContentDB {
     if (!cards.has(id)) throw new Error(`報酬ドロップ候補のカードID「${id}」が cards に存在しません`);
   }
 
+  // 施設の在庫カードIDが存在するか検証。
+  const shopIds = new Set<string>();
+  for (const shop of parsed.shops.shops) {
+    if (shopIds.has(shop.id)) throw new Error(`重複する施設ID: ${shop.id}`);
+    shopIds.add(shop.id);
+    for (const item of shop.stock) {
+      if (!cards.has(item.cardId)) throw new Error(`施設 ${shop.id} の在庫カードID「${item.cardId}」が cards に存在しません`);
+    }
+  }
+
+  // お豊のパーツ段階IDが該当部位の stages に存在するか検証。
+  for (const part of parsed.shops.parts) {
+    if (!swordStages.get(part.slot)?.stages.some((s) => s.id === part.stageId)) {
+      throw new Error(`パーツの段階ID「${part.stageId}」が部位 ${part.slot} の stages に存在しません`);
+    }
+  }
+
+  // 葵の融合レシピの入出力カードIDが存在するか検証。
+  for (const f of parsed.shops.fusions) {
+    for (const id of [...f.inputs, f.result]) {
+      if (!cards.has(id)) throw new Error(`融合レシピのカードID「${id}」が cards に存在しません`);
+    }
+  }
+
   const companions = new Map<string, CompanionDef>();
   for (const c of parsed.companions) {
     if (companions.has(c.id)) throw new Error(`重複する仲間ID: ${c.id}`);
@@ -101,7 +127,7 @@ export function loadContent(raw: unknown): ContentDB {
     onsen.set(o.id, o as OnsenEvent);
   }
 
-  return { combat: parsed.combat, cards, enemies, swordStages, sexCards, charmEnemies, maps, events, onsen, companions, rewards: parsed.rewards, text: parsed.text };
+  return { combat: parsed.combat, cards, enemies, swordStages, sexCards, charmEnemies, maps, events, onsen, companions, rewards: parsed.rewards, shops: parsed.shops as ShopData, text: parsed.text };
 }
 
 /** 指定部位の段階定義を引く。未知のIDはエラー（フェイルファスト）。 */

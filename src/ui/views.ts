@@ -24,6 +24,63 @@ function companionLine(game: Game): string {
   return game.run.companions.map((c) => role[c.id] ?? c.id).join("、");
 }
 
+const SLOT_JP: Record<SwordPart, string> = { blade: "刃", tsuba: "鍔", tsuka: "柄" };
+
+/** お豊の手入れパネル（打ち直し・パーツ交換、camp では購入も）。camp/道中で共用。docs/03「鍛冶屋」。 */
+function smithyPanelHtml(game: Game, allowBuy: boolean): string {
+  const db = game.db;
+  const notice = game.smithNotice ? `<p class="result-head">${escapeHtml(game.smithNotice)}</p>` : "";
+
+  // パーツ交換：所持予備パーツを部位ごとに列挙。
+  const slots: SwordPart[] = ["blade", "tsuba", "tsuka"];
+  const swapItems = slots
+    .flatMap((slot) =>
+      game.run.parts[slot].map(
+        (stageId) =>
+          `<button class="bigbtn reward-card" data-equip-slot="${slot}" data-equip-stage="${stageId}">
+            <span class="card-name">${SLOT_JP[slot]}：${escapeHtml(game.stageName(slot, stageId))}</span><br><span class="card-ap">付け替える</span>
+          </button>`,
+      ),
+    )
+    .join("");
+  const swapSection = `<p class="hint">パーツ交換（所持パーツを付け替え・無償）：</p>
+    <div class="map-choices reward-choices">${swapItems || `<p class="title-note">付け替えられる予備パーツがない。</p>`}</div>`;
+
+  let buySection = "";
+  if (allowBuy) {
+    const buyItems = db.shops.parts
+      .map((p, idx) => {
+        const afford = game.run.zeni >= p.price;
+        return `<button class="bigbtn reward-card ${afford ? "" : "blind"}" data-buypart="${idx}" ${afford ? "" : "disabled"}>
+          <span class="card-name">${SLOT_JP[p.slot]}：${escapeHtml(game.stageName(p.slot, p.stageId))}</span><br><span class="card-ap">${p.price}銭</span>
+        </button>`;
+      })
+      .join("");
+    buySection = `<p class="hint">パーツ購入（良い刃・鍔・柄を買い付け・有償）：</p>
+      <div class="map-choices reward-choices">${buyItems}</div>`;
+  }
+
+  return `
+    ${notice}
+    <div class="koyuki" style="margin:8px 0;"><div class="sword">${swordLine(db, game.run.sword)}</div></div>
+    <button id="repair" class="bigbtn">打ち直し（摩耗を等級まで回復・無償）</button>
+    ${swapSection}
+    ${buySection}`;
+}
+
+/** 手入れパネルのボタンに操作を結線する。 */
+function bindSmithy(game: Game, root: HTMLElement, allowBuy: boolean): void {
+  root.querySelector<HTMLButtonElement>("#repair")?.addEventListener("click", () => game.otoyoRepair());
+  root.querySelectorAll<HTMLButtonElement>("[data-equip-slot]").forEach((btn) =>
+    btn.addEventListener("click", () => game.otoyoEquip(btn.dataset.equipSlot as SwordPart, btn.dataset.equipStage!)),
+  );
+  if (allowBuy) {
+    root.querySelectorAll<HTMLButtonElement>("[data-buypart]").forEach((btn) =>
+      btn.addEventListener("click", () => game.otoyoBuyPart(Number(btn.dataset.buypart))),
+    );
+  }
+}
+
 export function renderTitle(game: Game, root: HTMLElement): void {
   const db = game.db;
   root.innerHTML = `
@@ -153,6 +210,21 @@ const NODE_TAG: Record<NodeType, string> = {
 export function renderMap(game: Game, root: HTMLElement): void {
   const db = game.db;
   const cur = game.currentNode();
+
+  // 道中のお豊・簡易サービス（打ち直し・パーツ交換。戦闘中は不可＝マップ上でのみ）。docs/03「移動中の簡易サービス」。
+  if (game.mapOtoyoOpen) {
+    root.innerHTML = `
+      <div class="screen narration-screen">
+        <h1>お豊の手入れ ― ${escapeHtml(cur?.label ?? "道中")}</h1>
+        <p class="narration">お豊「刀、貸しなさい。……研ぎ直すだけならタダよ。手持ちのパーツの付け替えも、見てあげる」</p>
+        ${smithyPanelHtml(game, false)}
+        <button id="back" class="bigbtn">道に戻る</button>
+      </div>`;
+    bindSmithy(game, root, false);
+    root.querySelector<HTMLButtonElement>("#back")?.addEventListener("click", () => game.closeMapOtoyo());
+    return;
+  }
+
   const nexts = game.nextNodes();
   const intro = cur?.type === "start" && cur.textKey ? `<p class="narration">${escapeHtml(tLine(db, cur.textKey))}</p>` : "";
   const notice = game.mapNotice ? `<p class="result-head">${escapeHtml(game.mapNotice)}</p>` : "";
@@ -166,22 +238,30 @@ export function renderMap(game: Game, root: HTMLElement): void {
 
   const goal = nexts.length === 0 ? `<p class="title-note">この先はもう無い。</p>` : "";
 
+  // お豊が同行していれば、道中でも刀の手入れ（打ち直し・パーツ交換）を頼める。
+  const otoyoHere = game.run.companions.some((c) => c.id === "otoyo");
+  const otoyoBtn = otoyoHere
+    ? `<button id="otoyo" class="bigbtn">お豊に刀を診てもらう（打ち直し・パーツ交換）</button>`
+    : "";
+
   root.innerHTML = `
     <div class="screen narration-screen">
       <h1>田舎・道中　― ${escapeHtml(cur?.label ?? "")}</h1>
       ${notice}
       ${intro}
       <div class="koyuki" style="margin:12px 0;">
-        <div>こゆき　HP ${game.run.hp}/${game.run.maxHp}</div>
+        <div>こゆき　HP ${game.run.hp}/${game.run.maxHp}　／　所持 ${game.run.zeni}銭</div>
         <div class="sword">${swordLine(db, game.run.sword)}</div>
         <div class="sword">仲間：${escapeHtml(companionLine(game))}　／　せっくすてく 身${game.run.sextech.mi}・鎬${game.run.sextech.shinogi}・切先${game.run.sextech.kissaki}</div>
       </div>
+      ${otoyoBtn}
       <p class="hint">進む先を選ぶ：</p>
       <div class="map-choices">${choices}</div>
       ${goal}
     </div>
   `;
 
+  root.querySelector<HTMLButtonElement>("#otoyo")?.addEventListener("click", () => game.openMapOtoyo());
   root.querySelectorAll<HTMLButtonElement>(".mapnode").forEach((btn) => {
     btn.addEventListener("click", () => game.travelTo(btn.dataset.node!));
   });
@@ -224,18 +304,118 @@ export function renderCamp(game: Game, root: HTMLElement): void {
   const db = game.db;
   const node = game.activeNodeId ? game.findNode(game.activeNodeId) : undefined;
   const text = node?.textKey ? tLine(db, node.textKey) : tLine(db, "map.inaka.camp");
+
+  // 共通ヘッダ：直近の結果（買った・売った・休んだ）＋こゆきの状態と所持金。
+  const head = `
+    <h1>野営地 ― ${escapeHtml(node?.label ?? "")}</h1>
+    ${game.campNotice ? `<p class="result-head">${escapeHtml(game.campNotice)}</p>` : ""}
+    <div class="koyuki" style="margin:12px 0;">
+      <div>こゆき　HP ${game.run.hp}/${game.run.maxHp}　／　所持 ${game.run.zeni}銭</div>
+      <div class="sword">${swordLine(db, game.run.sword)}</div>
+    </div>`;
+
+  // ── 施設選択メニュー ──
+  if (game.campView === "menu") {
+    const restBtn = game.campRested
+      ? `<button class="bigbtn" disabled>ひと晩休んだ（修繕・回復済み）</button>`
+      : `<button id="rest" class="bigbtn">ひと晩休む（刀を完全修繕・衣を繕う・HP+5）</button>`;
+    const shopBtns = game
+      .campShops()
+      .map((s) => `<button class="bigbtn shopbtn" data-shop="${s.id}">${escapeHtml(tLine(db, s.nameKey))}</button>`)
+      .join("");
+    root.innerHTML = `
+      <div class="screen narration-screen">
+        ${head}
+        <p class="narration">${escapeHtml(text)}</p>
+        <p class="hint">何をする？</p>
+        <div class="map-choices">
+          ${restBtn}
+          ${shopBtns}
+          <button id="leave" class="bigbtn">野営地を発つ</button>
+        </div>
+      </div>`;
+    root.querySelector<HTMLButtonElement>("#rest")?.addEventListener("click", () => game.campRest());
+    root.querySelectorAll<HTMLButtonElement>(".shopbtn").forEach((btn) =>
+      btn.addEventListener("click", () => game.campOpen(btn.dataset.shop!)),
+    );
+    root.querySelector<HTMLButtonElement>("#leave")?.addEventListener("click", () => game.campLeave());
+    return;
+  }
+
+  // ── 施設（鍛冶屋・行商人・道場）を開いている ──
+  const shop = db.shops.shops.find((s) => s.id === game.campView);
+  if (!shop) {
+    game.campOpen("menu");
+    return;
+  }
+
+  const buyLabel = shop.kind === "buy_fuse" ? "技を習う（月謝）：" : shop.kind === "smithy" ? "手入れ道具を仕入れる：" : "仕入れる（買う）：";
+  const buyList = shop.stock
+    .map((it) => {
+      const def = db.cards.get(it.cardId);
+      const afford = game.run.zeni >= it.price;
+      const sub = `AP ${def?.ap ?? "?"}${def?.uses != null ? `・${def.uses}回` : ""}`;
+      return `<button class="bigbtn reward-card ${afford ? "" : "blind"}" data-buy="${it.cardId}" ${afford ? "" : "disabled"}>
+        <span class="card-name">${escapeHtml(def?.name ?? it.cardId)}</span><br><span class="card-ap">${sub}　${it.price}銭</span>
+      </button>`;
+    })
+    .join("");
+
+  // 鍛冶屋＝お豊の手入れパネル（打ち直し・パーツ交換・パーツ購入）を上に置く。
+  const smithySection = shop.kind === "smithy" ? smithyPanelHtml(game, true) : "";
+
+  // 行商人＝売却／道場＝融合（2枚→1枚）。
+  let actionSection = "";
+  if (shop.kind === "buy_sell") {
+    const sellList = game
+      .disposableDeck()
+      .map((c) => {
+        const def = db.cards.get(c.defId);
+        return `<button class="bigbtn reward-card" data-sell="${c.uid}">
+          <span class="card-name">${escapeHtml(def?.name ?? c.defId)}</span><br><span class="card-ap">売値 ${game.cardSellPrice(c.defId)}銭</span>
+        </button>`;
+      })
+      .join("");
+    actionSection = `<p class="hint">売る（持ち物を銭に換える）：</p>
+      <div class="map-choices reward-choices">${sellList || `<p class="title-note">売れる物がない。</p>`}</div>`;
+  } else if (shop.kind === "buy_fuse") {
+    const fusable = game.fusableRecipes();
+    const fuseList = db.shops.fusions
+      .map((f, i) => {
+        const ok = fusable.includes(i);
+        const inN = f.inputs.map((id) => db.cards.get(id)?.name ?? id).join("＋");
+        const outN = db.cards.get(f.result)?.name ?? f.result;
+        return `<button class="bigbtn reward-card ${ok ? "" : "blind"}" data-fuse="${i}" ${ok ? "" : "disabled"}>
+          <span class="card-name">${escapeHtml(inN)} → ${escapeHtml(outN)}</span><br><span class="card-ap">${ok ? "閃く（2枚を融合）" : "素材が足りない"}</span>
+        </button>`;
+      })
+      .join("");
+    actionSection = `<p class="hint">型を見直す（既存の技2枚から、新しい技を閃く・無償）：</p>
+      <div class="map-choices reward-choices">${fuseList || `<p class="title-note">閃ける組み合わせがない。</p>`}</div>`;
+  }
+
   root.innerHTML = `
     <div class="screen narration-screen">
-      <h1>野営地</h1>
-      <p class="narration">${escapeHtml(text)}</p>
-      <div class="koyuki" style="margin:12px 0;">
-        <div class="sword">${swordLine(db, game.run.sword)}</div>
-      </div>
-      <p class="hint">お豊が刀を完全修繕（全部位を「新品同様」へ）し、破れた衣も繕ってくれる＋ひと晩の休息（HP+5）。</p>
-      <button id="camp" class="bigbtn">刀と衣を直して進む</button>
-    </div>
-  `;
-  root.querySelector<HTMLButtonElement>("#camp")?.addEventListener("click", () => game.applyCamp());
+      ${head}
+      <h2 style="margin:4px 0;">${escapeHtml(tLine(db, shop.nameKey))}</h2>
+      <p class="narration">${escapeHtml(tLine(db, shop.descKey))}</p>
+      ${smithySection}
+      <p class="hint">${buyLabel}</p>
+      <div class="map-choices reward-choices">${buyList}</div>
+      ${actionSection}
+      <button id="back" class="bigbtn">戻る</button>
+    </div>`;
+  if (shop.kind === "smithy") bindSmithy(game, root, true);
+  root.querySelectorAll<HTMLButtonElement>("[data-buy]").forEach((btn) =>
+    btn.addEventListener("click", () => game.campBuy(shop.id, btn.dataset.buy!)),
+  );
+  root.querySelectorAll<HTMLButtonElement>("[data-sell]").forEach((btn) =>
+    btn.addEventListener("click", () => game.campSell(btn.dataset.sell!)),
+  );
+  root.querySelectorAll<HTMLButtonElement>("[data-fuse]").forEach((btn) =>
+    btn.addEventListener("click", () => game.campFuse(Number(btn.dataset.fuse))),
+  );
+  root.querySelector<HTMLButtonElement>("#back")?.addEventListener("click", () => game.campOpen("menu"));
 }
 
 export function renderReward(game: Game, root: HTMLElement): void {

@@ -8,21 +8,21 @@
         "type": "start",
         "label": "村はずれの分かれ道",
         "textKey": "map.inaka.start",
-        "next": ["c_konbou"]
+        "next": ["c_konbou", "c_kemono"]
       },
       {
         "id": "c_konbou",
         "type": "battle",
         "label": "旧街道（山賊）",
         "enemyGroup": ["konbou_sanzoku"],
-        "next": ["c_yoromeku", "c_rest"]
+        "next": ["c_camp1"]
       },
       {
-        "id": "c_yoromeku",
+        "id": "c_kemono",
         "type": "battle",
-        "label": "獣道（しかばね）",
-        "enemyGroup": ["yoromeku_shikabane"],
-        "next": ["c_camp"]
+        "label": "獣道（野犬）",
+        "enemyGroup": ["nora_inu"],
+        "next": ["c_rest"]
       },
       {
         "id": "c_rest",
@@ -30,13 +30,27 @@
         "label": "けもの小道（休息）",
         "textKey": "map.inaka.rest",
         "heal": 8,
-        "next": ["c_camp"]
+        "next": ["c_camp1"]
       },
       {
-        "id": "c_camp",
+        "id": "c_camp1",
         "type": "camp",
-        "label": "野営地",
+        "label": "谷間の野営地",
         "textKey": "map.inaka.camp",
+        "next": ["c_oihagi", "c_yoromeku"]
+      },
+      {
+        "id": "c_oihagi",
+        "type": "battle",
+        "label": "旧街道のおく（追いはぎ）",
+        "enemyGroup": ["oihagi"],
+        "next": ["c_aoi"]
+      },
+      {
+        "id": "c_yoromeku",
+        "type": "battle",
+        "label": "獣道のおく（しかばね）",
+        "enemyGroup": ["yoromeku_shikabane"],
         "next": ["c_aoi"]
       },
       {
@@ -44,13 +58,6 @@
         "type": "charm_encounter",
         "label": "中間地点・道場跡",
         "eventId": "ev_aoi",
-        "next": ["c_musume"]
-      },
-      {
-        "id": "c_musume",
-        "type": "charm_encounter",
-        "label": "村のはずれ・村娘のしかばね",
-        "eventId": "ev_musume",
         "next": ["c_onsen"]
       },
       {
@@ -58,6 +65,27 @@
         "type": "onsen",
         "label": "山あいの湯けむり（温泉）",
         "onsenIds": ["onsen_otoyo", "onsen_aoi", "onsen_musume", "onsen_minna"],
+        "next": ["c_musume", "c_ueta"]
+      },
+      {
+        "id": "c_musume",
+        "type": "charm_encounter",
+        "label": "村のはずれ・村娘のしかばね",
+        "eventId": "ev_musume",
+        "next": ["c_camp2"]
+      },
+      {
+        "id": "c_ueta",
+        "type": "battle",
+        "label": "枯れ田（飢えたしかばね）",
+        "enemyGroup": ["ueta_shikabane"],
+        "next": ["c_camp2"]
+      },
+      {
+        "id": "c_camp2",
+        "type": "camp",
+        "label": "峠の野営地",
+        "textKey": "map.inaka.camp2",
         "next": ["c_pack"]
       },
       {

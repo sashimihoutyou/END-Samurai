@@ -41,6 +41,7 @@ export interface CardDef {
   requirements?: CardRequirement[];
   uses?: number; // 道具カードの残り回数（item のみ）
   upgradeId?: string; // 葵パッシブ「見取り稽古」で一時的に置換される上位カードID（docs/03）
+  value?: number; // 銭での基準価値（売却の基準。施設の買値は shops.json 側で指定）。docs/03「経済システム」
 }
 
 /** デッキ内の個体。回数など個体ごとの可変状態を持つ。 */
