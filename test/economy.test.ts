@@ -83,20 +83,37 @@ describe("野営地の施設", () => {
     expect(game.campShops().map((s) => s.id)).toContain("dojo");
   });
 
-  it("道場でカードを忘れるとデッキが縮む（無償）", () => {
+  it("道場で型2枚を融合すると新しい技1枚を閃く（デッキ -1・無償）", () => {
     const game = new Game(db, stubRoot());
     game.enterMap();
     game.run.companions.push({ id: "aoi", affection: "mid" });
     game.travelTo("c_camp1");
     game.run.zeni = 0;
-    const target = game.run.deck.find((c) => c.defId === "tsuku")!;
+    // 斬る＋斬る → 袈裟斬り（初期デッキに斬る×2）。
+    const recipeIdx = db.shops.fusions.findIndex((f) => f.result === "kesagiri");
+    expect(game.fusableRecipes()).toContain(recipeIdx);
     const before = game.run.deck.length;
-    game.campForget(target.uid);
-    expect(game.run.deck.length).toBe(before - 1);
+    const kiruBefore = game.run.deck.filter((c) => c.defId === "kiru").length;
+    game.campFuse(recipeIdx);
+    expect(game.run.deck.length).toBe(before - 1); // 2枚消費・1枚追加
+    expect(game.run.deck.filter((c) => c.defId === "kiru").length).toBe(kiruBefore - 2);
+    expect(game.run.deck.some((c) => c.defId === "kesagiri")).toBe(true);
     expect(game.run.zeni).toBe(0); // 無償
   });
 
-  it("仲間アクティブカードは売却・処分の対象外", () => {
+  it("素材が揃っていない融合はできない", () => {
+    const game = new Game(db, stubRoot());
+    game.enterMap();
+    // 斬るを全て取り除くと、斬る系レシピは実行不能になる。
+    game.run.deck = game.run.deck.filter((c) => c.defId !== "kiru");
+    const kesagiriIdx = db.shops.fusions.findIndex((f) => f.result === "kesagiri");
+    expect(game.fusableRecipes()).not.toContain(kesagiriIdx);
+    const before = game.run.deck.length;
+    game.campFuse(kesagiriIdx);
+    expect(game.run.deck.length).toBe(before); // 何も起きない
+  });
+
+  it("仲間アクティブカードは売却の対象外", () => {
     const game = new Game(db, stubRoot());
     game.enterMap();
     // 葵のアクティブ「型稽古」をデッキに入れる。
@@ -104,8 +121,49 @@ describe("野営地の施設", () => {
     expect(game.disposableDeck().some((c) => c.defId === "kata_keiko")).toBe(false);
     const before = game.run.deck.length;
     game.campSell("kata_keiko@test");
-    game.campForget("kata_keiko@test");
     expect(game.run.deck.length).toBe(before); // 何も起きない
+  });
+});
+
+describe("お豊の刀パーツ（在庫＋付け替え）", () => {
+  it("パーツ購入で所持品に加わり銭が減る（購入だけでは装備されない）", () => {
+    const game = new Game(db, stubRoot());
+    game.run.zeni = 100;
+    const idx = db.shops.parts.findIndex((p) => p.slot === "blade" && p.stageId === "kireaji_ryoko");
+    const price = db.shops.parts[idx].price;
+    game.otoyoBuyPart(idx);
+    expect(game.run.parts.blade).toContain("kireaji_ryoko");
+    expect(game.run.zeni).toBe(100 - price);
+    expect(game.run.swordGrade.blade).toBe("shinpin"); // まだ装備は新品同様
+  });
+
+  it("銭が足りなければパーツを買えない", () => {
+    const game = new Game(db, stubRoot());
+    game.run.zeni = 5;
+    const idx = db.shops.parts.findIndex((p) => p.slot === "blade" && p.stageId === "kireaji_ryoko");
+    game.otoyoBuyPart(idx);
+    expect(game.run.parts.blade).toHaveLength(0);
+    expect(game.run.zeni).toBe(5);
+  });
+
+  it("パーツ交換で装備等級が上がり、外したパーツは所持品へ戻る", () => {
+    const game = new Game(db, stubRoot());
+    game.run.parts.blade.push("kireaji_ryoko");
+    game.otoyoEquip("blade", "kireaji_ryoko");
+    expect(game.run.swordGrade.blade).toBe("kireaji_ryoko");
+    expect(game.run.sword.blade).toBe("kireaji_ryoko"); // 付けたては等級そのもの
+    expect(game.run.parts.blade).not.toContain("kireaji_ryoko"); // 在庫から外れた
+    expect(game.run.parts.blade).toContain("shinpin"); // 元の刃が在庫へ戻る
+  });
+
+  it("打ち直しは摩耗を装備パーツの等級まで戻す", () => {
+    const game = new Game(db, stubRoot());
+    game.run.parts.blade.push("kireaji_ryoko");
+    game.otoyoEquip("blade", "kireaji_ryoko"); // 等級＝切れ味良好
+    game.run.sword.blade = "namakura"; // 戦闘で摩耗した想定
+    game.otoyoRepair();
+    expect(game.run.sword.blade).toBe("kireaji_ryoko"); // 等級まで戻る（超えない）
+    expect(game.run.sword.tsuba).toBe("shinpin"); // 他部位は等級（新品同様）
   });
 
   it("『ひと晩休む』は同じ野営地で一度きり", () => {

@@ -100,6 +100,20 @@ export function loadContent(raw: unknown): ContentDB {
     }
   }
 
+  // お豊のパーツ段階IDが該当部位の stages に存在するか検証。
+  for (const part of parsed.shops.parts) {
+    if (!swordStages.get(part.slot)?.stages.some((s) => s.id === part.stageId)) {
+      throw new Error(`パーツの段階ID「${part.stageId}」が部位 ${part.slot} の stages に存在しません`);
+    }
+  }
+
+  // 葵の融合レシピの入出力カードIDが存在するか検証。
+  for (const f of parsed.shops.fusions) {
+    for (const id of [...f.inputs, f.result]) {
+      if (!cards.has(id)) throw new Error(`融合レシピのカードID「${id}」が cards に存在しません`);
+    }
+  }
+
   const companions = new Map<string, CompanionDef>();
   for (const c of parsed.companions) {
     if (companions.has(c.id)) throw new Error(`重複する仲間ID: ${c.id}`);

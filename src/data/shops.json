@@ -1,11 +1,24 @@
 {
   "sellRatio": 0.5,
+  "parts": [
+    { "slot": "blade", "stageId": "kireaji_ryoko", "price": 30 },
+    { "slot": "blade", "stageId": "abura_hajiki", "price": 60 },
+    { "slot": "tsuba", "stageId": "ganjo", "price": 30 },
+    { "slot": "tsuba", "stageId": "kohheki", "price": 60 },
+    { "slot": "tsuka", "stageId": "tenajimi", "price": 30 },
+    { "slot": "tsuka", "stageId": "ittaika", "price": 60 }
+  ],
+  "fusions": [
+    { "inputs": ["kiru", "kiru"], "result": "kesagiri", "flavorKey": "fusion.kesagiri" },
+    { "inputs": ["kiru", "tsuku"], "result": "nagiharai", "flavorKey": "fusion.nagiharai" },
+    { "inputs": ["tsuku", "ukeru"], "result": "kuzushi_uchi", "flavorKey": "fusion.kuzushi_uchi" }
+  ],
   "shops": [
     {
       "id": "blacksmith",
       "nameKey": "shop.blacksmith.name",
       "descKey": "shop.blacksmith.desc",
-      "kind": "buy",
+      "kind": "smithy",
       "stock": [
         { "cardId": "toishi_no_kakera", "price": 10 },
         { "cardId": "tsuba_no_ategane", "price": 10 },
@@ -28,7 +41,7 @@
       "id": "dojo",
       "nameKey": "shop.dojo.name",
       "descKey": "shop.dojo.desc",
-      "kind": "buy_forget",
+      "kind": "buy_fuse",
       "requiresCompanion": "aoi",
       "stock": [
         { "cardId": "kuzushi_uchi", "price": 18 },

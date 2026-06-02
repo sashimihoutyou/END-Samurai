@@ -22,5 +22,5 @@ export {
   WEAKNESS_MAX_STAGE,
   weaknessMultiplier,
 } from "./charm.js";
-export type { RunState, RunCompanion, Affection } from "./run-state.js";
-export type { ShopData, ShopDef, ShopStock, ShopKind } from "./shop.js";
+export type { RunState, RunCompanion, Affection, PartInventory } from "./run-state.js";
+export type { ShopData, ShopDef, ShopStock, ShopKind, ShopPart, FusionRecipe } from "./shop.js";

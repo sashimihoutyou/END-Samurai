@@ -16,8 +16,9 @@ import {
   useTodome,
 } from "../core/rules/charm-battle.js";
 import { generateReward, type RewardOffer } from "../core/rules/reward.js";
-import { availableShops, isDisposable, sellPrice } from "../core/rules/shop.js";
+import { availableFusions, availableShops, isDisposable, matchFusion, sellPrice } from "../core/rules/shop.js";
 import { effectiveScore, resolveOnsen } from "../core/rules/onsen.js";
+import type { SwordPart } from "../core/model/sword.js";
 import type { OnsenEvent, OnsenResult } from "../core/model/onsen.js";
 import { makeStarterDeck, makeStarterSword } from "./starter.js";
 import { describeBattleEvent, renderBattle } from "../ui/battle-view.js";
@@ -102,6 +103,10 @@ export class Game {
   campRested = false; // この野営地でひと晩休んだか（回復の連打防止）
   campNotice = ""; // 施設での直近の結果（買った・売った・休んだ等）
 
+  // ── 道中のお豊・簡易サービス（打ち直し・パーツ交換。戦闘中は不可）。docs/03「移動中の簡易サービス」──
+  mapOtoyoOpen = false; // マップ画面でお豊の手入れパネルを開いているか
+  smithNotice = ""; // 手入れ（打ち直し・付け替え）の直近の結果。camp/map で共用
+
   // ── 温泉イベント（docs/05 リメイク：複数段の選択式エロシーン）──
   onsenEvent: OnsenEvent | null = null;
   onsenPhase: OnsenPhase = "intro";
@@ -142,6 +147,8 @@ export class Game {
       hp: base,
       maxHp: base,
       sword: makeStarterSword(),
+      swordGrade: makeStarterSword(), // 初期は全部位「新品同様」が装備パーツの等級
+      parts: { blade: [], tsuba: [], tsuka: [] },
       costume: "normal",
       deck: makeStarterDeck(),
       companions: [],
@@ -173,6 +180,8 @@ export class Game {
     this.campView = "menu";
     this.campRested = false;
     this.campNotice = "";
+    this.mapOtoyoOpen = false;
+    this.smithNotice = "";
     this.rewardOffer = null;
     this.rewardReturnNode = null;
     this.onsenEvent = null;
@@ -390,15 +399,15 @@ export class Game {
     return availableShops(this.db, this.run.companions);
   }
 
-  /** ひと晩休む：お豊が刀を完全修繕＋衣を繕い、ひと晩で小回復する（この野営地で1回）。 */
+  /** ひと晩休む：お豊が刀を打ち直し（等級まで回復）＋衣を繕い、ひと晩で小回復する（この野営地で1回）。 */
   campRest(): void {
     if (this.campRested) return;
-    this.run.sword = makeStarterSword(); // 全部位「新品同様」へ（完全修繕）
+    this.run.sword = { ...this.run.swordGrade }; // 摩耗を装備パーツの等級まで戻す（打ち直し）
     this.run.costume = "normal"; // 衣装も繕う（docs/05「野営地の鍛冶屋で衣装修繕」）
     const before = this.run.hp;
     this.run.hp = Math.min(this.run.maxHp, this.run.hp + 5);
     this.campRested = true;
-    this.campNotice = `刀を研ぎ直し、衣を繕い、傷を癒した（HP +${this.run.hp - before}）`;
+    this.campNotice = `刀を打ち直し、衣を繕い、傷を癒した（HP +${this.run.hp - before}）`;
     this.render();
   }
 
@@ -444,15 +453,89 @@ export class Game {
     this.render();
   }
 
-  /** デッキの1枚を忘れる＝デッキ圧縮（道場・無償）。仲間アクティブは対象外。docs/03「道場」。 */
-  campForget(cardUid: string): void {
-    const idx = this.run.deck.findIndex((c) => c.uid === cardUid);
-    if (idx < 0) return;
-    const inst = this.run.deck[idx];
-    if (!isDisposable(this.db, inst)) return;
-    const name = this.db.cards.get(inst.defId)?.name ?? inst.defId;
-    this.run.deck.splice(idx, 1);
-    this.campNotice = `${name}を手放した（デッキ圧縮）`;
+  /** いま実行できる融合レシピのインデックス（デッキが入力を満たすもの）。UI用。 */
+  fusableRecipes(): number[] {
+    return availableFusions(this.db, this.run.deck);
+  }
+
+  /**
+   * 道場（葵）：既存の型2枚を融合し、新しい技1枚を閃く（デッキ圧縮＋強化）。無償。docs/03「道場」。
+   * 入力カードをデッキから消費し、結果カードを1枚加える。
+   */
+  campFuse(recipeIndex: number): void {
+    const recipe = this.db.shops.fusions[recipeIndex];
+    if (!recipe) return;
+    const consumeUids = matchFusion(this.run.deck, recipe);
+    if (!consumeUids) return; // 入力が揃っていない
+    this.run.deck = this.run.deck.filter((c) => !consumeUids.includes(c.uid));
+    const def = this.db.cards.get(recipe.result);
+    this.cardSeq += 1;
+    const inst = def?.uses != null
+      ? { uid: `${recipe.result}@fuse${this.cardSeq}`, defId: recipe.result, usesLeft: def.uses }
+      : { uid: `${recipe.result}@fuse${this.cardSeq}`, defId: recipe.result };
+    this.run.deck.push(inst);
+    const flavor = recipe.flavorKey && typeof this.db.text[recipe.flavorKey] === "string"
+      ? (this.db.text[recipe.flavorKey] as string)
+      : "";
+    const inNames = recipe.inputs.map((id) => this.db.cards.get(id)?.name ?? id).join("＋");
+    this.campNotice = flavor || `${inNames}から「${def?.name ?? recipe.result}」を閃いた！`;
+    this.render();
+  }
+
+  // ── お豊の刀パーツ（打ち直し・パーツ交換・パーツ購入）。docs/03「鍛冶屋」──
+
+  /** 刀部位の段階表示名。UI用。 */
+  stageName(slot: SwordPart, stageId: string): string {
+    return this.db.swordStages.get(slot)?.stages.find((s) => s.id === stageId)?.name ?? stageId;
+  }
+
+  /** 打ち直し（無償）：摩耗した刀を、装備パーツの等級まで戻す。camp/道中で共用。 */
+  otoyoRepair(): void {
+    this.run.sword = { ...this.run.swordGrade };
+    this.smithNotice = "刀を打ち直した（摩耗を等級まで戻した）";
+    this.render();
+  }
+
+  /**
+   * パーツ交換（無償・道中可・戦闘中不可）：所持パーツを装備に付け替える。
+   * いま装備中の等級パーツは所持品へ戻り、選んだパーツが装備（現在状態も新品の等級に）。
+   */
+  otoyoEquip(slot: SwordPart, stageId: string): void {
+    const inv = this.run.parts[slot];
+    const idx = inv.indexOf(stageId);
+    if (idx < 0) return; // 所持していない
+    inv.splice(idx, 1);
+    inv.push(this.run.swordGrade[slot]); // 外したパーツは等級のまま所持品へ戻る（摩耗は残らない）
+    this.run.swordGrade[slot] = stageId;
+    this.run.sword[slot] = stageId; // 付けたてなので現在状態も等級
+    this.smithNotice = `${slot === "blade" ? "刃" : slot === "tsuba" ? "鍔" : "柄"}を「${this.stageName(slot, stageId)}」に付け替えた`;
+    this.render();
+  }
+
+  /** パーツ購入（有料）：お豊が良いパーツを買い付けて所持品に加える（現地買い付けのため有償）。 */
+  otoyoBuyPart(partIndex: number): void {
+    const part = this.db.shops.parts[partIndex];
+    if (!part) return;
+    if (this.run.zeni < part.price) {
+      this.smithNotice = "銭が足りない……";
+      this.render();
+      return;
+    }
+    this.run.zeni -= part.price;
+    this.run.parts[part.slot].push(part.stageId);
+    this.smithNotice = `「${this.stageName(part.slot, part.stageId)}」を買い付けた（-${part.price}銭）。付け替えで装備できる`;
+    this.render();
+  }
+
+  /** 道中（マップ画面）でお豊の手入れパネルを開く／閉じる。戦闘中は呼ばれない。 */
+  openMapOtoyo(): void {
+    this.mapOtoyoOpen = true;
+    this.smithNotice = "";
+    this.render();
+  }
+  closeMapOtoyo(): void {
+    this.mapOtoyoOpen = false;
+    this.smithNotice = "";
     this.render();
   }
 
@@ -559,7 +642,7 @@ export class Game {
     }
     if (result.fullHeal) {
       this.run.hp = this.run.maxHp; // HP全回復
-      this.run.sword = makeStarterSword(); // 刀も全修繕（温泉効果）
+      this.run.sword = { ...this.run.swordGrade }; // 刀も打ち直し（装備パーツの等級まで）
       this.run.costume = "normal"; // 衣も整う
     }
     this.onsenPhase = "outcome";

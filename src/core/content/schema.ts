@@ -254,12 +254,24 @@ const shopDefSchema = z.object({
   id: z.string(),
   nameKey: z.string(),
   descKey: z.string(),
-  kind: z.enum(["buy", "buy_sell", "buy_forget"]),
+  kind: z.enum(["buy", "buy_sell", "buy_fuse", "smithy"]),
   stock: z.array(shopStockSchema),
   requiresCompanion: z.string().optional(),
 });
+const shopPartSchema = z.object({
+  slot: swordPart,
+  stageId: z.string(),
+  price: z.number().int().nonnegative(),
+});
+const fusionRecipeSchema = z.object({
+  inputs: z.tuple([z.string(), z.string()]),
+  result: z.string(),
+  flavorKey: z.string().optional(),
+});
 export const shopsSchema = z.object({
   sellRatio: z.number().positive().max(1),
+  parts: z.array(shopPartSchema),
+  fusions: z.array(fusionRecipeSchema),
   shops: z.array(shopDefSchema).nonempty(),
 });
 
