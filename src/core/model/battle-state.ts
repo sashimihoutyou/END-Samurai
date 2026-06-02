@@ -75,6 +75,8 @@ export type BattleEvent =
   | { type: "CompanionBuff"; companionId: string; label: string } // 仲間アクティブ／パッシブの効果
   | { type: "HandUpgraded"; fromCardId: string; toCardId: string } // 葵パッシブで手札の技が上位化
   | { type: "DegradeNullified"; part: SwordPart } // 刀部位デバフを無効化した（打ち直し）
+  | { type: "SynergyAmplified"; enemyUid: string; amount: number } // 連携型：味方生存で与ダメが上がった
+  | { type: "ConcealNullified"; enemyUid: string } // 隠匿型：受け切って随伴効果を無効化した
   | { type: "KoyukiReaction"; reactionKey: string }
   | { type: "BattleWon" }
   | { type: "BattleLost" };

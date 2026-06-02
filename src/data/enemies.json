@@ -183,6 +183,70 @@
     ]
   },
   {
+    "id": "jibaku_shikabane",
+    "name": "自爆しかばね",
+    "archetype": "timed",
+    "hp": 15,
+    "defense": 0,
+    "bounty": 12,
+    "fuse": 3,
+    "selfDestruct": true,
+    "intents": [
+      {
+        "id": "fukureru",
+        "label": "ぶくぶく膨れていく",
+        "icon": "swell",
+        "effects": []
+      },
+      {
+        "id": "jibaku",
+        "label": "自爆！（大ダメージ）",
+        "icon": "boom",
+        "effects": [{ "kind": "damage", "amount": 13 }]
+      }
+    ]
+  },
+  {
+    "id": "kubinashi_shikabane",
+    "name": "くびなししかばね",
+    "archetype": "concealed",
+    "hp": 16,
+    "defense": 1,
+    "bounty": 13,
+    "intents": [
+      {
+        "id": "nazo_no_ichigeki",
+        "label": "謎の一撃（？）",
+        "icon": "question",
+        "concealEffect": true,
+        "effects": [
+          { "kind": "damage", "amount": 5 },
+          { "kind": "apply_status", "status": "poison", "x": 2 },
+          { "kind": "apply_status", "status": "bleed", "x": 2 },
+          { "kind": "grab" },
+          { "kind": "degrade_part", "part": "tsuba", "chance": 1.0 }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mure_shikabane",
+    "name": "群れしかばね",
+    "archetype": "synergy",
+    "hp": 12,
+    "defense": 0,
+    "bounty": 7,
+    "synergyBonus": 5,
+    "intents": [
+      {
+        "id": "muregami",
+        "label": "群れで噛みつく",
+        "icon": "bite",
+        "effects": [{ "kind": "damage", "amount": 3 }]
+      }
+    ]
+  },
+  {
     "id": "oo_shikabane",
     "name": "大しかばね",
     "archetype": "random_intent",

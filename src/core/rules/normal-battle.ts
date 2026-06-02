@@ -110,7 +110,13 @@ function makeEnemyInstance(db: ContentDB, defId: string, index: number): EnemyIn
     intents: def.intents,
     intentIndex: 0,
     statuses: [],
+    fuse: def.fuse, // timed：溜めターン（undefined＝非時限）
   };
+}
+
+/** timed（時限型）の予告位置：残り溜めが1以下なら大技（最終intent）、まだ溜め中なら溜め（intents[0]）。 */
+function timedIntentIndex(enemy: EnemyInstance): number {
+  return (enemy.fuse ?? 1) <= 1 ? enemy.intents.length - 1 : 0;
 }
 
 /** 山札から手札上限まで補充する（山札が尽きたら捨て札をシャッフルして戻す）。 */
@@ -158,10 +164,10 @@ export function startBattle(db: ContentDB, setup: BattleSetup, rng: Rng): Result
     attackHits: 0,
     phase: "player",
   };
-  // 予告ランダム型（docs/01「予告ランダム型」）：初期予告を抽選する。
-  // 表示される予告＝この敵ターンに実行される行動（予告とのズレを作らない）。
+  // 予告の初期化（表示される予告＝この敵ターンに実行される行動。予告とのズレを作らない）。
   for (const e of state.enemies) {
-    if (e.archetype === "random_intent") e.intentIndex = rng.int(e.intents.length);
+    if (e.archetype === "random_intent") e.intentIndex = rng.int(e.intents.length); // 予告ランダム型：抽選
+    else if (e.archetype === "timed") e.intentIndex = timedIntentIndex(e); // 時限型：溜め/大技の別
   }
   drawToHandLimit(state, db, rng);
   const events: BattleEvent[] = [{ type: "TurnStarted", turn: 1 }];
@@ -508,6 +514,16 @@ export function endTurn(db: ContentDB, input: BattleState, rng: Rng): Result {
 
     let rawDamage = 0;
     for (const eff of intent.effects) if (eff.kind === "damage") rawDamage += eff.amount;
+    // 連携型（docs/01「連携型」）：生存している味方が1体でもいる間は与ダメージにボーナス。
+    // 味方を倒せば無力化される＝「どの敵から処理するか」のターゲティング判断を作る。
+    if (enemy.archetype === "synergy") {
+      const def = db.enemies.get(enemy.defId);
+      const hasAlly = aliveEnemies(state).some((e) => e.uid !== enemy.uid);
+      if (def?.synergyBonus && hasAlly) {
+        rawDamage += def.synergyBonus;
+        events.push({ type: "SynergyAmplified", enemyUid: enemy.uid, amount: def.synergyBonus });
+      }
+    }
     const damage = inasu ? Math.ceil(rawDamage * 1.5) : rawDamage;
 
     let dodged = false;
@@ -530,29 +546,41 @@ export function endTurn(db: ContentDB, input: BattleState, rng: Rng): Result {
       }
     }
 
-    for (const eff of intent.effects) {
-      if (eff.kind === "degrade_part") {
-        // 予告型デバフは確定だが、いなす／受け切り（防御値≧被ダメ）／回避で守れる（docs/01「部位デバフの発生確率」）。
-        const safe = (inasu && telegraph === eff.part) || dodged || (damage > 0 && !penetrated);
-        if (safe) {
-          events.push({ type: "PartDefended", part: eff.part });
-        } else if (state.degradeShield > 0) {
-          // 打ち直し（お豊アクティブ）の盾で1回無効化（docs/03）。
-          state.degradeShield -= 1;
-          events.push({ type: "DegradeNullified", part: eff.part });
-        } else {
-          const d = degradePart(db, state.sword, eff.part);
-          if (d) events.push({ type: "PartDegraded", part: eff.part, from: d.from, to: d.to });
-        }
-      } else if (eff.kind === "grab") {
-        state.grabbedBy = enemy.uid;
-        events.push({ type: "Grabbed", enemyUid: enemy.uid });
-      } else if (eff.kind === "apply_status") {
-        // 状態異常付与（毒/出血/気絶）。受け切り（防御値≧被ダメ）・回避で無効化（docs/01「防御値≧被ダメージ→デバフ無効」）。
-        const safe = dodged || (damage > 0 && !penetrated);
-        if (!safe) {
-          addStatus(state.statuses, eff.status, eff.x);
-          events.push({ type: "StatusApplied", status: eff.status, x: eff.x, toKoyuki: true, enemyUid: null });
+    // 適用する随伴効果。隠匿型（docs/01「隠匿型／くびなし」）は複数候補から1つだけを抽選し、
+    // 効果種別を伏せて出す（数値は表示）。それ以外は予告どおり全効果を適用する。
+    let effectsToApply = intent.effects.filter((e) => e.kind !== "damage");
+    if (intent.concealEffect && effectsToApply.length > 0) {
+      effectsToApply = [effectsToApply[rng.int(effectsToApply.length)]];
+    }
+    // 隠匿型のフェアネス保証：受け切る（防御値≧被ダメ）／回避できれば随伴効果は無効。
+    const concealSafe = dodged || (damage > 0 && !penetrated);
+    if (intent.concealEffect && effectsToApply.length > 0 && concealSafe) {
+      events.push({ type: "ConcealNullified", enemyUid: enemy.uid });
+    } else {
+      for (const eff of effectsToApply) {
+        if (eff.kind === "degrade_part") {
+          // 予告型デバフは確定だが、いなす／受け切り（防御値≧被ダメ）／回避で守れる（docs/01「部位デバフの発生確率」）。
+          const safe = (inasu && telegraph === eff.part) || dodged || (damage > 0 && !penetrated);
+          if (safe) {
+            events.push({ type: "PartDefended", part: eff.part });
+          } else if (state.degradeShield > 0) {
+            // 打ち直し（お豊アクティブ）の盾で1回無効化（docs/03）。
+            state.degradeShield -= 1;
+            events.push({ type: "DegradeNullified", part: eff.part });
+          } else {
+            const d = degradePart(db, state.sword, eff.part);
+            if (d) events.push({ type: "PartDegraded", part: eff.part, from: d.from, to: d.to });
+          }
+        } else if (eff.kind === "grab") {
+          state.grabbedBy = enemy.uid;
+          events.push({ type: "Grabbed", enemyUid: enemy.uid });
+        } else if (eff.kind === "apply_status") {
+          // 状態異常付与（毒/出血/気絶）。受け切り（防御値≧被ダメ）・回避で無効化（docs/01「防御値≧被ダメージ→デバフ無効」）。
+          const safe = dodged || (damage > 0 && !penetrated);
+          if (!safe) {
+            addStatus(state.statuses, eff.status, eff.x);
+            events.push({ type: "StatusApplied", status: eff.status, x: eff.x, toKoyuki: true, enemyUid: null });
+          }
         }
       }
     }
@@ -563,6 +591,21 @@ export function endTurn(db: ContentDB, input: BattleState, rng: Rng): Result {
     } else if (enemy.archetype === "random_intent") {
       // 予告ランダム型：次ターンの予告を抽選し直す（実行後に確定＝次の予告表示と一致）。
       enemy.intentIndex = rng.int(enemy.intents.length);
+    } else if (enemy.archetype === "timed") {
+      // 時限型（docs/01「時限型」）：溜め中は fuse を減らし、最終intent＝大技を発動したら自壊／リセット。
+      const detonationIndex = enemy.intents.length - 1;
+      const def = db.enemies.get(enemy.defId);
+      if (enemy.intentIndex === detonationIndex) {
+        if (def?.selfDestruct) {
+          enemy.hp = 0; // 大技を放って自壊（自爆しかばね）
+          events.push({ type: "EnemyDefeated", enemyUid: enemy.uid });
+        } else {
+          enemy.fuse = def?.fuse ?? 1; // 溜め直してループ
+        }
+      } else {
+        enemy.fuse = (enemy.fuse ?? 1) - 1; // 溜め進行
+      }
+      if (enemy.hp > 0) enemy.intentIndex = timedIntentIndex(enemy); // 次ターンの予告（溜め/大技）を更新
     }
 
     if (state.hp <= 0) {

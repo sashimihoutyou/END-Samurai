@@ -109,6 +109,9 @@ export const enemyDefSchema = z.object({
   bounty: z.number().int().nonnegative().optional(),
   charmTarget: z.boolean().optional(),
   isBoss: z.boolean().optional(),
+  fuse: z.number().int().positive().optional(), // timed：大技までの溜めターン
+  selfDestruct: z.boolean().optional(), // timed：発動後に自壊
+  synergyBonus: z.number().int().positive().optional(), // synergy：味方生存中の与ダメ加算
 });
 
 // ── 魅了バトル（docs/02・08 §2.6）──────────────────────────────
