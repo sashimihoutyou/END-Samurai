@@ -22,5 +22,6 @@ export interface RunState {
   companions: RunCompanion[];
   sextech: SextechState;
   rescuedCount: number;
+  zeni: number; // 所持金（銭）。戦闘・温泉で得て、野営地の施設で使う。docs/03「経済システム」
   flags: Record<string, boolean>;
 }

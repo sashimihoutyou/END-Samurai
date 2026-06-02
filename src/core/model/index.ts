@@ -23,3 +23,4 @@ export {
   weaknessMultiplier,
 } from "./charm.js";
 export type { RunState, RunCompanion, Affection } from "./run-state.js";
+export type { ShopData, ShopDef, ShopStock, ShopKind } from "./shop.js";

@@ -70,6 +70,7 @@ export const cardDefSchema = z.object({
   requirements: z.array(cardRequirementSchema).optional(),
   uses: z.number().int().positive().optional(),
   upgradeId: z.string().optional(),
+  value: z.number().int().nonnegative().optional(),
 });
 
 // 同行仲間（docs/03「仲間スキル」）。
@@ -103,6 +104,7 @@ export const enemyDefSchema = z.object({
   hp: z.number().int().positive(),
   defense: z.number().int().nonnegative(),
   intents: z.array(intentSchema).nonempty(),
+  bounty: z.number().int().nonnegative().optional(),
   charmTarget: z.boolean().optional(),
   isBoss: z.boolean().optional(),
 });
@@ -243,6 +245,24 @@ export const rewardsSchema = z.object({
   dropPool: z.array(z.string()).nonempty(), // 田舎で入手しうるカードID
 });
 
+// 野営地の施設（docs/03「野営地」「経済システム」）。在庫・価格・売却レートを外部化。
+const shopStockSchema = z.object({
+  cardId: z.string(),
+  price: z.number().int().nonnegative(),
+});
+const shopDefSchema = z.object({
+  id: z.string(),
+  nameKey: z.string(),
+  descKey: z.string(),
+  kind: z.enum(["buy", "buy_sell", "buy_forget"]),
+  stock: z.array(shopStockSchema),
+  requiresCompanion: z.string().optional(),
+});
+export const shopsSchema = z.object({
+  sellRatio: z.number().positive().max(1),
+  shops: z.array(shopDefSchema).nonempty(),
+});
+
 export const contentSchema = z.object({
   combat: combatConfigSchema,
   swordStages: z.array(swordPartStagesSchema).length(3),
@@ -255,6 +275,7 @@ export const contentSchema = z.object({
   onsen: z.array(onsenEventSchema).nonempty(),
   companions: z.array(companionDefSchema).nonempty(),
   rewards: rewardsSchema,
+  shops: shopsSchema,
   text: textSchema,
 });
 

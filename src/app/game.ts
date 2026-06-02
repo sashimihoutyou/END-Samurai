@@ -16,6 +16,7 @@ import {
   useTodome,
 } from "../core/rules/charm-battle.js";
 import { generateReward, type RewardOffer } from "../core/rules/reward.js";
+import { availableShops, isDisposable, sellPrice } from "../core/rules/shop.js";
 import { effectiveScore, resolveOnsen } from "../core/rules/onsen.js";
 import type { OnsenEvent, OnsenResult } from "../core/model/onsen.js";
 import { makeStarterDeck, makeStarterSword } from "./starter.js";
@@ -96,6 +97,11 @@ export class Game {
   mapNotice = ""; // マップ画面上部に出す直近の結果（「○○を退けた」等）
   currentEvent: EventDef | null = null;
 
+  // ── 野営地ハブ（施設：鍛冶屋・道場・行商人）。docs/03「野営地」──
+  campView = "menu"; // "menu" ＝施設選択／施設ID＝その店を開いている
+  campRested = false; // この野営地でひと晩休んだか（回復の連打防止）
+  campNotice = ""; // 施設での直近の結果（買った・売った・休んだ等）
+
   // ── 温泉イベント（docs/05 リメイク：複数段の選択式エロシーン）──
   onsenEvent: OnsenEvent | null = null;
   onsenPhase: OnsenPhase = "intro";
@@ -141,6 +147,7 @@ export class Game {
       companions: [],
       sextech: { mi: 0, shinogi: 0, kissaki: 0 },
       rescuedCount: 0,
+      zeni: 0,
       flags: {},
     };
   }
@@ -163,6 +170,9 @@ export class Game {
     this.activeNodeId = null;
     this.mapNotice = "";
     this.currentEvent = null;
+    this.campView = "menu";
+    this.campRested = false;
+    this.campNotice = "";
     this.rewardOffer = null;
     this.rewardReturnNode = null;
     this.onsenEvent = null;
@@ -333,6 +343,10 @@ export class Game {
         break;
       }
       case "camp": {
+        // 野営地ハブを開く（施設選択メニュー）。ひと晩の休息はこの野営地で1回まで。
+        this.campView = "menu";
+        this.campRested = false;
+        this.campNotice = "";
         this.screen = "camp";
         this.render();
         break;
@@ -369,13 +383,93 @@ export class Game {
     this.render();
   }
 
-  /** 野営地：お豊が刀を完全修繕し、ひと晩で小回復する。 */
-  applyCamp(): void {
-    if (!this.activeNodeId) return;
+  // ── 野営地ハブ（施設）─────────────────────────────────────────
+
+  /** いま利用できる施設（葵がいなければ道場は出ない）。docs/03「野営地」。 */
+  campShops() {
+    return availableShops(this.db, this.run.companions);
+  }
+
+  /** ひと晩休む：お豊が刀を完全修繕＋衣を繕い、ひと晩で小回復する（この野営地で1回）。 */
+  campRest(): void {
+    if (this.campRested) return;
     this.run.sword = makeStarterSword(); // 全部位「新品同様」へ（完全修繕）
     this.run.costume = "normal"; // 衣装も繕う（docs/05「野営地の鍛冶屋で衣装修繕」）
+    const before = this.run.hp;
     this.run.hp = Math.min(this.run.maxHp, this.run.hp + 5);
-    this.advanceTo(this.activeNodeId, "刀を研ぎ直し、衣を繕い、傷を癒した");
+    this.campRested = true;
+    this.campNotice = `刀を研ぎ直し、衣を繕い、傷を癒した（HP +${this.run.hp - before}）`;
+    this.render();
+  }
+
+  /** 施設を開く／メニューへ戻る（view="menu"）。 */
+  campOpen(view: string): void {
+    this.campView = view;
+    this.campNotice = "";
+    this.render();
+  }
+
+  /** 施設の在庫を1つ買う（銭が足りなければ何もしない）。 */
+  campBuy(shopId: string, cardId: string): void {
+    const shop = this.db.shops.shops.find((s) => s.id === shopId);
+    const item = shop?.stock.find((i) => i.cardId === cardId);
+    const def = item ? this.db.cards.get(cardId) : undefined;
+    if (!shop || !item || !def) return;
+    if (this.run.zeni < item.price) {
+      this.campNotice = "銭が足りない……";
+      this.render();
+      return;
+    }
+    this.run.zeni -= item.price;
+    this.cardSeq += 1;
+    const inst = def.uses != null
+      ? { uid: `${cardId}@buy${this.cardSeq}`, defId: cardId, usesLeft: def.uses }
+      : { uid: `${cardId}@buy${this.cardSeq}`, defId: cardId };
+    this.run.deck.push(inst);
+    this.campNotice = `${def.name}を仕入れた（-${item.price}銭）`;
+    this.render();
+  }
+
+  /** デッキの1枚を売る（行商人）。売値＝Core層 sellPrice。 */
+  campSell(cardUid: string): void {
+    const idx = this.run.deck.findIndex((c) => c.uid === cardUid);
+    if (idx < 0) return;
+    const inst = this.run.deck[idx];
+    if (!isDisposable(this.db, inst)) return; // 仲間アクティブは売れない
+    const price = sellPrice(this.db, inst.defId);
+    const name = this.db.cards.get(inst.defId)?.name ?? inst.defId;
+    this.run.deck.splice(idx, 1);
+    this.run.zeni += price;
+    this.campNotice = `${name}を売った（+${price}銭）`;
+    this.render();
+  }
+
+  /** デッキの1枚を忘れる＝デッキ圧縮（道場・無償）。仲間アクティブは対象外。docs/03「道場」。 */
+  campForget(cardUid: string): void {
+    const idx = this.run.deck.findIndex((c) => c.uid === cardUid);
+    if (idx < 0) return;
+    const inst = this.run.deck[idx];
+    if (!isDisposable(this.db, inst)) return;
+    const name = this.db.cards.get(inst.defId)?.name ?? inst.defId;
+    this.run.deck.splice(idx, 1);
+    this.campNotice = `${name}を手放した（デッキ圧縮）`;
+    this.render();
+  }
+
+  /** 売却・処分できるデッキ個体（仲間アクティブを除く）。UI用。 */
+  disposableDeck() {
+    return this.run.deck.filter((c) => isDisposable(this.db, c));
+  }
+
+  /** カードの売値（UI表示用）。 */
+  cardSellPrice(defId: string): number {
+    return sellPrice(this.db, defId);
+  }
+
+  /** 野営地を発つ。 */
+  campLeave(): void {
+    if (!this.activeNodeId) return;
+    this.advanceTo(this.activeNodeId, "野営地を発った");
   }
 
   // ── 温泉イベント（複数段の選択式エロシーン）────────────────────
@@ -558,6 +652,9 @@ export class Game {
       this.run.hp = this.battle.hp; // HP・刀・衣装の状態をランへ引き継ぐ（1ラン通し）
       this.run.sword = this.battle.sword;
       this.run.costume = this.battle.costume;
+      // 撃破した敵の懸賞金（銭）を獲得（docs/03「経済システム」）。
+      const bounty = this.battle.enemies.reduce((sum, e) => sum + (this.db.enemies.get(e.defId)?.bounty ?? 0), 0);
+      this.run.zeni += bounty;
       if (this.activeNodeId === null) {
         this.screen = "nora_result"; // プロローグ野犬戦
       } else {
@@ -566,7 +663,8 @@ export class Game {
           this.screen = "result"; // 大しかばね撃破＝クリア
         } else {
           const names = this.battle.enemies.map((e) => e.name).join("・");
-          this.offerReward(this.activeNodeId, `${names}を退けた`); // 戦闘報酬（3択）→マップ
+          const suffix = bounty > 0 ? `（+${bounty}銭）` : "";
+          this.offerReward(this.activeNodeId, `${names}を退けた${suffix}`); // 戦闘報酬（3択）→マップ
           return;
         }
       }

@@ -5,6 +5,7 @@
     "category": "skill",
     "ap": 2,
     "target": "single",
+    "value": 8,
     "flavorKey": "card.kiru.flavor",
     "upgradeId": "kesagiri",
     "effects": [{ "kind": "attack", "multiplier": 1.0 }]
@@ -15,6 +16,7 @@
     "category": "skill",
     "ap": 1,
     "target": "single",
+    "value": 5,
     "flavorKey": "card.tsuku.flavor",
     "effects": [{ "kind": "attack", "multiplier": 0.6 }]
   },
@@ -24,6 +26,7 @@
     "category": "skill",
     "ap": 1,
     "target": "self",
+    "value": 5,
     "flavorKey": "card.ukeru.flavor",
     "effects": [{ "kind": "block", "amount": 3 }]
   },
@@ -33,6 +36,7 @@
     "category": "skill",
     "ap": 2,
     "target": "self",
+    "value": 6,
     "flavorKey": "card.mikiru.flavor",
     "effects": [{ "kind": "dodge_next" }]
   },
@@ -43,6 +47,7 @@
     "ap": 1,
     "target": "self",
     "uses": 2,
+    "value": 10,
     "flavorKey": "card.toishi.flavor",
     "effects": [{ "kind": "repair_part", "part": "blade", "cap": "kireaji_teika" }]
   },
@@ -53,6 +58,7 @@
     "ap": 1,
     "target": "self",
     "uses": 2,
+    "value": 10,
     "flavorKey": "card.ategane.flavor",
     "effects": [{ "kind": "repair_part", "part": "tsuba", "cap": "hibiware" }]
   },
@@ -63,8 +69,20 @@
     "ap": 1,
     "target": "self",
     "uses": 2,
+    "value": 10,
     "flavorKey": "card.makinaoshi.flavor",
     "effects": [{ "kind": "repair_part", "part": "tsuka", "cap": "yurumi" }]
+  },
+  {
+    "id": "joto_toishi",
+    "name": "上物の砥石",
+    "category": "item",
+    "ap": 1,
+    "target": "self",
+    "uses": 2,
+    "value": 24,
+    "flavorKey": "card.joto_toishi.flavor",
+    "effects": [{ "kind": "repair_part", "part": "blade", "cap": "kireaji_ryoko" }]
   },
   {
     "id": "kizugusuri",
@@ -73,6 +91,7 @@
     "ap": 1,
     "target": "self",
     "uses": 3,
+    "value": 12,
     "flavorKey": "card.kizugusuri.flavor",
     "effects": [{ "kind": "heal", "amount": 5 }]
   },
@@ -82,6 +101,7 @@
     "category": "skill",
     "ap": 3,
     "target": "single",
+    "value": 22,
     "flavorKey": "card.kesagiri.flavor",
     "requirements": [{ "kind": "blade_stage_at_least", "stage": "kireaji_teika" }],
     "effects": [{ "kind": "attack", "multiplier": 1.5 }]
@@ -92,6 +112,7 @@
     "category": "skill",
     "ap": 2,
     "target": "single",
+    "value": 18,
     "flavorKey": "card.kuzushi_uchi.flavor",
     "effects": [
       { "kind": "attack", "multiplier": 0.4 },
@@ -104,6 +125,7 @@
     "category": "skill",
     "ap": 3,
     "target": "all",
+    "value": 20,
     "flavorKey": "card.nagiharai.flavor",
     "effects": [{ "kind": "attack", "multiplier": 0.5 }]
   },
@@ -113,6 +135,7 @@
     "category": "skill",
     "ap": 1,
     "target": "single",
+    "value": 8,
     "flavorKey": "card.tsuka_uchi.flavor",
     "effects": [
       { "kind": "fixed_damage", "amount": 3, "ignoreDefense": true },

@@ -21,7 +21,7 @@ describe("マップ進行の配線（田舎）", () => {
     game.enterMap();
     expect(game.screen).toBe("map");
     expect(game.mapPos).toBe("start");
-    expect(game.nextNodes().map((n) => n.id)).toEqual(["c_konbou"]);
+    expect(game.nextNodes().map((n) => n.id)).toEqual(["c_konbou", "c_kemono"]);
 
     game.travelTo("c_konbou");
     expect(game.screen).toBe("battle");
@@ -41,19 +41,24 @@ describe("マップ進行の配線（田舎）", () => {
     expect(game.run.hp).toBe(18); // +8
   });
 
-  it("野営地はお豊が刀を完全修繕し、HPを小回復してマップへ戻る", () => {
+  it("野営地で『ひと晩休む』とお豊が刀を完全修繕し、HPを小回復する（留まる）", () => {
     const game = new Game(db, stubRoot());
     game.enterMap();
     game.run.hp = 20;
     game.run.sword = { blade: "namakura", tsuba: "hibiware", tsuka: "yurumi" };
     game.run.costume = "broken";
-    game.travelTo("c_camp");
+    game.travelTo("c_camp1");
     expect(game.screen).toBe("camp");
-    game.applyCamp();
-    expect(game.screen).toBe("map");
+    game.campRest();
     expect(game.run.sword).toEqual({ blade: "shinpin", tsuba: "shinpin", tsuka: "shinpin" });
     expect(game.run.costume).toBe("normal"); // 衣も繕われる
     expect(game.run.hp).toBe(25); // +5
+    expect(game.screen).toBe("camp"); // 休んでも野営地に留まり、施設を使える
+    expect(game.campRested).toBe(true);
+
+    game.campLeave();
+    expect(game.screen).toBe("map");
+    expect(game.mapPos).toBe("c_camp1");
   });
 
   it("中間地点で葵と遭遇→とろかし→とどめで葵が加入し、マップへ戻る", () => {

@@ -172,7 +172,7 @@ export function renderMap(game: Game, root: HTMLElement): void {
       ${notice}
       ${intro}
       <div class="koyuki" style="margin:12px 0;">
-        <div>こゆき　HP ${game.run.hp}/${game.run.maxHp}</div>
+        <div>こゆき　HP ${game.run.hp}/${game.run.maxHp}　／　所持 ${game.run.zeni}銭</div>
         <div class="sword">${swordLine(db, game.run.sword)}</div>
         <div class="sword">仲間：${escapeHtml(companionLine(game))}　／　せっくすてく 身${game.run.sextech.mi}・鎬${game.run.sextech.shinogi}・切先${game.run.sextech.kissaki}</div>
       </div>
@@ -224,18 +224,110 @@ export function renderCamp(game: Game, root: HTMLElement): void {
   const db = game.db;
   const node = game.activeNodeId ? game.findNode(game.activeNodeId) : undefined;
   const text = node?.textKey ? tLine(db, node.textKey) : tLine(db, "map.inaka.camp");
+
+  // 共通ヘッダ：直近の結果（買った・売った・休んだ）＋こゆきの状態と所持金。
+  const head = `
+    <h1>野営地 ― ${escapeHtml(node?.label ?? "")}</h1>
+    ${game.campNotice ? `<p class="result-head">${escapeHtml(game.campNotice)}</p>` : ""}
+    <div class="koyuki" style="margin:12px 0;">
+      <div>こゆき　HP ${game.run.hp}/${game.run.maxHp}　／　所持 ${game.run.zeni}銭</div>
+      <div class="sword">${swordLine(db, game.run.sword)}</div>
+    </div>`;
+
+  // ── 施設選択メニュー ──
+  if (game.campView === "menu") {
+    const restBtn = game.campRested
+      ? `<button class="bigbtn" disabled>ひと晩休んだ（修繕・回復済み）</button>`
+      : `<button id="rest" class="bigbtn">ひと晩休む（刀を完全修繕・衣を繕う・HP+5）</button>`;
+    const shopBtns = game
+      .campShops()
+      .map((s) => `<button class="bigbtn shopbtn" data-shop="${s.id}">${escapeHtml(tLine(db, s.nameKey))}</button>`)
+      .join("");
+    root.innerHTML = `
+      <div class="screen narration-screen">
+        ${head}
+        <p class="narration">${escapeHtml(text)}</p>
+        <p class="hint">何をする？</p>
+        <div class="map-choices">
+          ${restBtn}
+          ${shopBtns}
+          <button id="leave" class="bigbtn">野営地を発つ</button>
+        </div>
+      </div>`;
+    root.querySelector<HTMLButtonElement>("#rest")?.addEventListener("click", () => game.campRest());
+    root.querySelectorAll<HTMLButtonElement>(".shopbtn").forEach((btn) =>
+      btn.addEventListener("click", () => game.campOpen(btn.dataset.shop!)),
+    );
+    root.querySelector<HTMLButtonElement>("#leave")?.addEventListener("click", () => game.campLeave());
+    return;
+  }
+
+  // ── 施設（鍛冶屋・行商人・道場）を開いている ──
+  const shop = db.shops.shops.find((s) => s.id === game.campView);
+  if (!shop) {
+    game.campOpen("menu");
+    return;
+  }
+
+  const buyList = shop.stock
+    .map((it) => {
+      const def = db.cards.get(it.cardId);
+      const afford = game.run.zeni >= it.price;
+      const sub = `AP ${def?.ap ?? "?"}${def?.uses != null ? `・${def.uses}回` : ""}`;
+      return `<button class="bigbtn reward-card ${afford ? "" : "blind"}" data-buy="${it.cardId}" ${afford ? "" : "disabled"}>
+        <span class="card-name">${escapeHtml(def?.name ?? it.cardId)}</span><br><span class="card-ap">${sub}　${it.price}銭</span>
+      </button>`;
+    })
+    .join("");
+
+  // 売却（行商人）／忘れる＝デッキ圧縮（道場）。
+  let actionSection = "";
+  if (shop.kind === "buy_sell") {
+    const sellList = game
+      .disposableDeck()
+      .map((c) => {
+        const def = db.cards.get(c.defId);
+        return `<button class="bigbtn reward-card" data-sell="${c.uid}">
+          <span class="card-name">${escapeHtml(def?.name ?? c.defId)}</span><br><span class="card-ap">売値 ${game.cardSellPrice(c.defId)}銭</span>
+        </button>`;
+      })
+      .join("");
+    actionSection = `<p class="hint">売る（持ち物を銭に換える）：</p>
+      <div class="map-choices reward-choices">${sellList || `<p class="title-note">売れる物がない。</p>`}</div>`;
+  } else if (shop.kind === "buy_forget") {
+    const forgetList = game
+      .disposableDeck()
+      .map((c) => {
+        const def = db.cards.get(c.defId);
+        return `<button class="bigbtn reward-card" data-forget="${c.uid}">
+          <span class="card-name">${escapeHtml(def?.name ?? c.defId)}</span><br><span class="card-ap">忘れる（圧縮）</span>
+        </button>`;
+      })
+      .join("");
+    actionSection = `<p class="hint">型を見直す（不要な技を忘れてデッキを締める・無償）：</p>
+      <div class="map-choices reward-choices">${forgetList || `<p class="title-note">忘れられる技がない。</p>`}</div>`;
+  }
+
   root.innerHTML = `
     <div class="screen narration-screen">
-      <h1>野営地</h1>
-      <p class="narration">${escapeHtml(text)}</p>
-      <div class="koyuki" style="margin:12px 0;">
-        <div class="sword">${swordLine(db, game.run.sword)}</div>
-      </div>
-      <p class="hint">お豊が刀を完全修繕（全部位を「新品同様」へ）し、破れた衣も繕ってくれる＋ひと晩の休息（HP+5）。</p>
-      <button id="camp" class="bigbtn">刀と衣を直して進む</button>
-    </div>
-  `;
-  root.querySelector<HTMLButtonElement>("#camp")?.addEventListener("click", () => game.applyCamp());
+      ${head}
+      <h2 style="margin:4px 0;">${escapeHtml(tLine(db, shop.nameKey))}</h2>
+      <p class="narration">${escapeHtml(tLine(db, shop.descKey))}</p>
+      <p class="hint">仕入れる（買う）：</p>
+      <div class="map-choices reward-choices">${buyList}</div>
+      ${actionSection}
+      <button id="back" class="bigbtn">戻る</button>
+    </div>`;
+  root.querySelectorAll<HTMLButtonElement>("[data-buy]").forEach((btn) =>
+    btn.addEventListener("click", () => game.campBuy(shop.id, btn.dataset.buy!)),
+  );
+  root.querySelectorAll<HTMLButtonElement>("[data-sell]").forEach((btn) =>
+    btn.addEventListener("click", () => game.campSell(btn.dataset.sell!)),
+  );
+  root.querySelectorAll<HTMLButtonElement>("[data-forget]").forEach((btn) =>
+    btn.addEventListener("click", () => game.campForget(btn.dataset.forget!)),
+  );
+  root.querySelector<HTMLButtonElement>("#back")?.addEventListener("click", () => game.campOpen("menu"));
 }
 
 export function renderReward(game: Game, root: HTMLElement): void {
