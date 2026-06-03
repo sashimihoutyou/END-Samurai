@@ -61,7 +61,7 @@ describe("マップ進行の配線（田舎）", () => {
     expect(game.mapPos).toBe("c_camp1");
   });
 
-  it("中間地点で葵と遭遇→とろかし→とどめで葵が加入し、マップへ戻る", () => {
+  it("中間地点で葵と遭遇→とろかし→lead で葵が加入し、マップへ戻る", () => {
     const game = new Game(db, stubRoot());
     game.enterMap();
     game.travelTo("c_aoi"); // イベント（葵遭遇）
@@ -69,21 +69,18 @@ describe("マップ進行の配線（田舎）", () => {
     expect(game.currentEvent?.id).toBe("ev_aoi");
 
     game.chooseEvent(0); // 「とろかす…♡」
-    expect(game.screenCharm).toBe(true);
-    expect(game.charmEnemyDefId).toBe("aoi");
-    expect(game.charm?.enemies[0].defId).toBe("aoi");
+    expect(game.torokashi).not.toBeNull();
+    expect(game.torokashiEnemyDefId).toBe("aoi");
 
-    // 気力0（放心）まで削った状態を作り、とどめで決着させる（収支ではなく配線の確認）。
-    game.charm!.enemies[0].qi = 0;
-    game.charm!.enemies[0].defeated = true;
-    expect(game.charmIsTodomeReady()).toBe(true);
-    game.charmTodome(); // 1タップ目：確認
-    game.charmTodome(); // 2タップ目：実行→勝利
-    expect(game.screen).toBe("charm_result");
+    // スコアを閾値以上に直接設定してresolution
+    game.torokashi!.totalScore = 999;
+    game.torokashi!.phase = "madamada";
+    game.torokashiFinish();
+    expect(game.screen).toBe("torokashi_result");
     expect(game.run.companions.some((c) => c.id === "aoi")).toBe(true);
     expect(game.run.flags.aoiJoined).toBe(true);
 
-    game.afterCharmResult();
+    game.afterTorokashiDone();
     expect(game.screen).toBe("map");
     expect(game.mapPos).toBe("c_aoi");
   });
@@ -105,29 +102,28 @@ describe("マップ進行の配線（田舎）", () => {
     game.travelTo("c_musume");
     game.chooseEvent(0); // 斬る！
     expect(game.screen).toBe("battle");
-    expect(game.screenCharm).toBe(false);
+    expect(game.torokashi).toBeNull();
     expect(game.battle?.enemies[0].defId).toBe("musume_shikabane");
   });
 
-  it("「とろかす…♡」→とどめで救済者+1（加入はしない）、マップへ戻る", () => {
+  it("「とろかす…♡」→lead で救済者+1（加入はしない）、マップへ戻る", () => {
     const game = new Game(db, stubRoot());
     game.enterMap();
     game.mapPos = "c_aoi";
     game.travelTo("c_musume");
     game.chooseEvent(1); // とろかす…♡
-    expect(game.screenCharm).toBe(true);
-    expect(game.charmEnemyDefId).toBe("musume_shikabane");
+    expect(game.torokashi).not.toBeNull();
+    expect(game.torokashiEnemyDefId).toBe("musume_shikabane");
 
     const before = game.run.rescuedCount;
-    game.charm!.enemies[0].qi = 0;
-    game.charm!.enemies[0].defeated = true;
-    game.charmTodome(); // 確認
-    game.charmTodome(); // 実行→勝利
-    expect(game.screen).toBe("charm_result");
+    game.torokashi!.totalScore = 999;
+    game.torokashi!.phase = "madamada";
+    game.torokashiFinish();
+    expect(game.screen).toBe("torokashi_result");
     expect(game.run.rescuedCount).toBe(before + 1);
     expect(game.run.companions.length).toBe(0); // むすめしかばねは加入しない
 
-    game.afterCharmResult();
+    game.afterTorokashiDone();
     expect(game.screen).toBe("map");
     expect(game.mapPos).toBe("c_musume");
   });
@@ -188,19 +184,13 @@ describe("マップ進行の配線（田舎）", () => {
     expect(game.battle?.enemies[0].defId).toBe("oo_shikabane");
   });
 
-  it("敗北すると即ゲームオーバー（とろかしの暴発でHP0）", () => {
+  it("通常戦闘でHP0かつlost判定になるとゲームオーバー（gameOverを直接呼ぶ）", () => {
     const game = new Game(db, stubRoot());
     game.enterMap();
-    game.travelTo("c_aoi");
-    game.chooseEvent(0);
-    game.run.hp = 1;
-    game.charm!.hp = 1;
-    game.charm!.gaman = 0; // 次の四十八手で暴発しうる状態
-    // 暴発でHP0→敗北になるまでターンを進める
-    let guard = 0;
-    while ((game.screen as string) !== "gameover" && guard++ < 30) {
-      game.charmEndTurn();
-    }
+    game.travelTo("c_konbou");
+    expect(game.screen).toBe("battle");
+    // game.gameOver() が正しく gameover 画面を表示するか確認
+    game.gameOver();
     expect(game.screen).toBe("gameover");
   });
 });

@@ -46,7 +46,6 @@ function startOnsenWith(companions: string[], rescued: number): Game {
   game.run.companions = companions.map((id) => ({ id, affection: "mid" as const }));
   game.run.rescuedCount = rescued;
   game.run.hp = 5;
-  game.run.sextech = { mi: 0, shinogi: 0, kissaki: 0 };
   game.mapPos = "c_musume";
   game.travelTo("c_onsen");
   return game;
@@ -60,10 +59,9 @@ describe("温泉シーンの結末判定（純粋関数）", () => {
     expect(resolveOnsen(ev, ev.threshold - 1).outcome).toBe("indulgent");
   });
 
-  it("せっくすてく獲得はスコア比例（floor(score / rewardDivisor)）", () => {
-    expect(resolveOnsen(ev, 10).sextechGain).toBe(Math.floor(10 / ev.rewardDivisor));
-    expect(resolveOnsen(ev, 0).sextechGain).toBe(0);
-    expect(resolveOnsen(ev, 10).sextechPart).toBe(ev.rewardPart);
+  it("lead は sizaGain を返し、indulgent は 0 を返す", () => {
+    expect(resolveOnsen(ev, ev.threshold).sizaGain).toBe(ev.sizaGain);
+    expect(resolveOnsen(ev, ev.threshold - 1).sizaGain).toBe(0);
   });
 
   it("lead は全回復（fullHeal=true）、indulgent は部分回復（fullHeal=false）＝ミニゲームの懸け金", () => {
@@ -139,7 +137,7 @@ describe("温泉イベントの進行（App層）", () => {
     playThrough(game, favoritePicks(ev));
     expect(game.onsenResult?.outcome).toBe("lead");
     expect(game.onsenScore).toBe(maxOnsenScore(ev));
-    expect(game.run.sextech.kissaki).toBe(Math.floor(maxOnsenScore(ev) / ev.rewardDivisor));
+    expect(game.onsenResult?.sizaGain).toBe(ev.sizaGain);
     expect(game.run.hp).toBe(game.run.maxHp);
 
     const pages = (db.text["onsen.aoi.lead"] as string[]).length;
@@ -153,7 +151,7 @@ describe("温泉イベントの進行（App層）", () => {
     playThrough(game, worstPicks(evOf("onsen_otoyo")));
     expect(game.onsenScore).toBe(0);
     expect(game.onsenResult?.outcome).toBe("indulgent");
-    expect(game.run.sextech.shinogi).toBe(0);
+    expect(game.onsenResult?.sizaGain).toBe(0);
     // 蕩かされて回復は中途半端：最大HP30の6割=18までしか戻らない（全回復しない）。
     expect(game.run.hp).toBe(Math.floor(game.run.maxHp * 0.6));
     expect(game.run.hp).toBeLessThan(game.run.maxHp);

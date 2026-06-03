@@ -1,10 +1,10 @@
 import type { SwordState } from "./sword.js";
 import type { CardInstance } from "./card.js";
 import type { Costume } from "./battle-state.js";
-import type { SextechState } from "./charm.js";
+import type { SexAttr } from "./torokashi.js";
 
 // 1ラン全体の状態（docs/08 §3.1）。セーブなし＝アプリ起動中のみ存在。
-// α版プロローグの縦切りでは、野犬戦→お豊魅了バトルへ HP・刀・仲間・せっくすてくを引き継ぐ器として使う。
+// α版プロローグの縦切りでは、野犬戦→お豊とろかしへ HP・刀・仲間を引き継ぐ器として使う。
 
 export type Affection = "low" | "mid" | "high";
 
@@ -29,7 +29,7 @@ export interface RunState {
   costume: Costume; // 衣装破損段階（戦闘間で持続。docs/05）
   deck: CardInstance[];
   companions: RunCompanion[];
-  sextech: SextechState;
+  sizaHitCounts: Partial<Record<SexAttr, number>>; // とろかし流の弱点hit累計（寸法二つ名カウント）
   rescuedCount: number;
   zeni: number; // 所持金（銭）。戦闘・温泉で得て、野営地の施設で使う。docs/03「経済システム」
   flags: Record<string, boolean>;

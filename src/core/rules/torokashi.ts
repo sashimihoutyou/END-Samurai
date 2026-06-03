@@ -31,7 +31,7 @@ export interface TorokashiSetup {
 function clone(s: TorokashiState): TorokashiState { return structuredClone(s); }
 
 /** 提示する3択を生成する（回数依存フィルタ適用）。 */
-export function makeChoices(def: TorokashiEnemyDef, loop: number, rng: Rng): SexAttr[] {
+export function makeChoices(_def: TorokashiEnemyDef, loop: number, rng: Rng): SexAttr[] {
   const pool = ALL_ATTRS.filter(a => loop > 0 || !SECOND_LOOP_ONLY.has(a));
   // Fisher-Yates shuffle して先頭3つを取る
   const arr = [...pool];

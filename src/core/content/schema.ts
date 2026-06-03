@@ -108,77 +108,26 @@ export const enemyDefSchema = z.object({
   intents: z.array(intentSchema).nonempty(),
   bounty: z.number().int().nonnegative().optional(),
   charmTarget: z.boolean().optional(),
+  torokashiTarget: z.boolean().optional(),
   isBoss: z.boolean().optional(),
   fuse: z.number().int().positive().optional(), // timed：大技までの溜めターン
   selfDestruct: z.boolean().optional(), // timed：発動後に自壊
   synergyBonus: z.number().int().positive().optional(), // synergy：味方生存中の与ダメ加算
 });
 
-// ── 魅了バトル（docs/02・08 §2.6）──────────────────────────────
+// ── とろかし流ミニゲーム（docs/02「とろかし流ミニゲーム」）──────────────────────────────
 
-const sexAttr = z.enum([
-  "kuchizuke",
-  "hogushi",
-  "chichikuri",
-  "seikou",
-  "ushirodori",
-  "matagari",
-  "uradori",
-]);
+const sexAttr = z.enum(["kuchizuke", "hogushi", "seikou", "chichikuri", "ushirodori", "uradori"]);
+const sizePreference = z.enum(["small", "medium", "large", "any"]);
 
-const sexEffectSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("qi_damage") }),
-  z.object({ kind: z.literal("qi_defense_down"), amount: z.number().int() }),
-  z.object({ kind: z.literal("heal_from_damage"), ratio: z.number().positive().max(1) }),
-  z.object({ kind: z.literal("atk_debuff"), amount: z.number().int() }),
-  z.object({ kind: z.literal("double_defense_ref") }),
-  z.object({ kind: z.literal("weaken_attr"), amount: z.number().int().positive() }),
-  z.object({ kind: z.literal("guard_up"), amount: z.number().int() }),
-  z.object({ kind: z.literal("guard_down"), amount: z.number().int() }),
-  z.object({ kind: z.literal("targeted_finish"), gamanToEnemy: z.number().int().nonnegative(), selfHpLoss: z.number().int().nonnegative().optional() }),
-]);
-
-export const sexCardDefSchema = z.object({
+export const torokashiEnemyDefSchema = z.object({
   id: z.string(),
   name: z.string(),
-  attrs: z.array(sexAttr).nonempty(),
-  ap: z.number().int().nonnegative(),
-  baseQi: z.number().int().nonnegative(),
-  target: z.enum(["single", "all"]),
-  effects: z.array(sexEffectSchema),
-  flavorKey: z.string().optional(),
-});
-
-const weaknessSchema = z.object({
-  kuchizuke: z.number().int().min(0).max(3),
-  hogushi: z.number().int().min(0).max(3),
-  chichikuri: z.number().int().min(0).max(3),
-  seikou: z.number().int().min(0).max(3),
-  ushirodori: z.number().int().min(0).max(3),
-  matagari: z.number().int().min(0).max(3),
-  uradori: z.number().int().min(0).max(3),
-});
-
-const charmEnemyEffectSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("gaman_attack"), amount: z.number().int().positive() }),
-  z.object({ kind: z.literal("apply_status"), status: z.string(), x: z.number().int() }),
-]);
-
-const charmIntentSchema = z.object({
-  id: z.string(),
-  label: z.string(),
-  icon: z.string(),
-  effects: z.array(charmEnemyEffectSchema),
-});
-
-export const charmEnemyDefSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  qi: z.number().int().positive(),
-  gaman: z.number().int().positive(),
-  qiDefense: z.number().int().nonnegative(),
-  weakness: weaknessSchema,
-  intents: z.array(charmIntentSchema).nonempty(),
+  weakAttrs: z.array(sexAttr),
+  nearAttrs: z.array(sexAttr),
+  sizePreference: sizePreference,
+  handCount: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  hintKey: z.string(),
   joinCompanionId: z.string().optional(),
 });
 
@@ -206,7 +155,7 @@ export const mapDefSchema = z.object({
 });
 
 const eventOutcomeSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("start_charm_battle"), enemyId: z.string() }),
+  z.object({ kind: z.literal("start_torokashi"), enemyId: z.string() }),
   z.object({ kind: z.literal("start_normal_battle"), enemyGroup: z.array(z.string()).nonempty() }),
   z.object({ kind: z.literal("heal"), amount: z.number().int().positive() }),
   z.object({ kind: z.literal("continue") }),
@@ -220,7 +169,6 @@ export const eventDefSchema = z.object({
 });
 
 // 温泉イベント（docs/05 リメイク）。5段の選択式エロシーン（加点制・中断なし）。
-const sextechPart = z.enum(["mi", "shinogi", "kissaki"]);
 const onsenChoiceSchema = z.object({
   labelKey: z.string(),
   score: z.number().int().min(0),
@@ -238,8 +186,7 @@ export const onsenEventSchema = z.object({
   introKey: z.string(),
   stages: z.array(onsenStageSchema).nonempty(),
   threshold: z.number().int().positive(),
-  rewardPart: sextechPart,
-  rewardDivisor: z.number().int().positive(),
+  sizaGain: z.number().int().nonnegative(),
   leadOutcomeKey: z.string(),
   indulgentOutcomeKey: z.string(),
   multipliers: z.record(z.string(), z.number().positive()).optional(),
@@ -286,8 +233,7 @@ export const contentSchema = z.object({
   swordStages: z.array(swordPartStagesSchema).length(3),
   cards: z.array(cardDefSchema).nonempty(),
   enemies: z.array(enemyDefSchema).nonempty(),
-  sexCards: z.array(sexCardDefSchema).nonempty(),
-  charmEnemies: z.array(charmEnemyDefSchema).nonempty(),
+  torokashiEnemies: z.array(torokashiEnemyDefSchema).nonempty(),
   maps: z.array(mapDefSchema).nonempty(),
   events: z.array(eventDefSchema).nonempty(),
   onsen: z.array(onsenEventSchema).nonempty(),

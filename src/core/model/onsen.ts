@@ -4,10 +4,8 @@
 //  - 反応テキストの濃淡で好みを暗示する（メタな説明はしない）。
 //  - 合計が閾値以上 → 相手が気絶するまで絶頂、こゆきが自信と経験を積む（lead）。
 //  - 閾値未満 → 攻守逆転し、お豊（相手）主導でこゆきが蕩かされる（indulgent）。
-//  - せっくすてく獲得はスコア比例（floor(score / rewardDivisor)）。いずれも温泉ゆえ全回復。
+//  - lead時のsizaGain（寸法二つ名カウント加算）。いずれも温泉ゆえ全回復。
 // Core層の鉄則どおり、ここは型のみ（本文・数値は data/onsen.json へ外部化）。
-
-import type { SextechState } from "./charm.js";
 
 /** 出現条件：相手が誰として現れるか（加入仲間／救済したモブ）。 */
 export type OnsenPartnerSource = "companion" | "rescued";
@@ -31,8 +29,7 @@ export interface OnsenEvent {
   introKey: string; // 導入ナレーション（string[]＝複数ページ可）
   stages: OnsenStage[]; // 5段の行為（順に解決・中断なし）
   threshold: number; // lead に必要な合計スコア
-  rewardPart: keyof SextechState; // 伸びるせっくすてく部位（身/鎬/切先）
-  rewardDivisor: number; // せっくすてく加算 = floor(totalScore / rewardDivisor)
+  sizaGain: number; // lead時のsizaHitカウント加算（暫定1）
   leadOutcomeKey: string; // 成功（気絶絶頂・自信と経験）テキスト（string[]）
   indulgentOutcomeKey: string; // 未達（攻守逆転・全回復）テキスト（string[]）
   multipliers?: Record<string, number>; // 性感補正（タグ→倍率）。例 葵: {foreplay:2, cowgirl:1.5, anal:1.5}
@@ -43,8 +40,6 @@ export interface OnsenEvent {
 export interface OnsenResult {
   outcome: "lead" | "indulgent";
   score: number; // 合計スコア
-  sextechPart: keyof SextechState; // 伸びる部位
-  sextechGain: number; // せっくすてく加算（スコア比例）
+  sizaGain: number; // sizaHitカウント加算（lead時のみ加算）
   fullHeal: boolean; // 全回復＋刀打ち直しか（lead のみ true。indulgent は部分回復）。docs/10
 }
-

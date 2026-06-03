@@ -1,20 +1,17 @@
 import type { ContentDB } from "../core/content/loader.js";
 import type { BattleEvent, BattleState } from "../core/model/battle-state.js";
-import type { CharmBattleState, CharmEvent, SextechState } from "../core/model/charm.js";
+import type { TorokashiState, TorokashiEvent, SexAttr } from "../core/model/torokashi.js";
 import type { EventDef, MapDef, MapNode } from "../core/model/map.js";
 import type { RunState } from "../core/model/run-state.js";
 import { createRng, type Rng } from "../core/rng/rng.js";
 import { canPlayCard, endTurn, hasTelegraphedPart, playCard, setBrace, startBattle } from "../core/rules/normal-battle.js";
 import {
-  allocateSextech,
-  autoAllocateSextech,
-  canPlaySexCard,
-  endCharmTurn,
-  playSexCard,
-  startCharmBattle,
-  todomeReady,
-  useTodome,
-} from "../core/rules/charm-battle.js";
+  startTorokashi,
+  selectAttr,
+  advanceHand,
+  madamada,
+  resolveTorokashi,
+} from "../core/rules/torokashi.js";
 import { generateReward, type RewardOffer } from "../core/rules/reward.js";
 import { availableFusions, availableShops, isDisposable, matchFusion, sellPrice } from "../core/rules/shop.js";
 import { effectiveScore, resolveOnsen } from "../core/rules/onsen.js";
@@ -22,12 +19,12 @@ import type { SwordPart } from "../core/model/sword.js";
 import type { OnsenEvent, OnsenResult } from "../core/model/onsen.js";
 import { makeStarterDeck, makeStarterSword } from "./starter.js";
 import { describeBattleEvent, renderBattle } from "../ui/battle-view.js";
-import { describeCharmEvent, renderCharm } from "../ui/charm-view.js";
+import { describeTorokashiEvent, renderTorokashi } from "../ui/torokashi-view.js";
 import {
   renderArea1Lead,
   renderCamp,
-  renderCharmIntro,
-  renderCharmResult,
+  renderTorokashiIntro,
+  renderTorokashiResult,
   renderEvent,
   renderGameOver,
   renderMap,
@@ -50,8 +47,8 @@ export type ScreenName =
   | "area1_lead"
   | "battle"
   | "nora_result"
-  | "charm_intro"
-  | "charm_result"
+  | "torokashi_intro"
+  | "torokashi_result"
   | "map"
   | "event"
   | "camp"
@@ -78,11 +75,11 @@ export class Game {
   private root: HTMLElement;
 
   screen: ScreenName = "title";
-  page = 0; // ページ送り画面（opening / charm_intro / charm_result / event）の現在ページ
+  page = 0; // ページ送り画面（opening / torokashi_intro / torokashi_result / event）の現在ページ
 
   run: RunState;
   battle: BattleState | null = null;
-  charm: CharmBattleState | null = null;
+  torokashi: TorokashiState | null = null;
   log: string[] = [];
 
   // ── 通常戦闘の画面コンテキスト（汎用化：野犬もマップ戦も同じ battle 画面で描く）──
@@ -124,17 +121,11 @@ export class Game {
   private rewardNotice = ""; // 報酬後にマップへ出す結果文
   private cardSeq = 0; // 入手カードの個体ID採番
 
-  /** charm 画面を描画中か（battle 画面と区別するための内部フラグ）。 */
-  screenCharm = false;
-  /** charm UI：とどめ確認モードか（最終確認の1タップ） */
-  charmTodomeArmed = false;
-  /** いま戦っているとろかし相手の敵ID（画面タイトル・台詞・結果の出し分け）。 */
-  charmEnemyDefId = "otoyo";
-  /** 直近のとろかしバトルが処女喪失回（＝初回）か。終了台詞の出し分けに使う。docs/09 §4 */
-  charmFirstTime = false;
+  // ── とろかし流ミニゲーム ──
+  torokashiEnemyDefId = "otoyo"; // 現在のとろかし相手の敵ID
+  private torokashiRng: Rng = createRng(RUN_SEED);
 
   private battleRng: Rng = createRng(RUN_SEED);
-  private charmRng: Rng = createRng(RUN_SEED);
 
   constructor(db: ContentDB, root: HTMLElement) {
     this.db = db;
@@ -153,7 +144,7 @@ export class Game {
       costume: "normal",
       deck: makeStarterDeck(),
       companions: [],
-      sextech: { mi: 0, shinogi: 0, kissaki: 0 },
+      sizaHitCounts: {},
       rescuedCount: 0,
       zeni: 0,
       flags: {},
@@ -169,7 +160,7 @@ export class Game {
   goTitle(): void {
     this.run = this.freshRun();
     this.battle = null;
-    this.charm = null;
+    this.torokashi = null;
     this.log = [];
     this.page = 0;
     this.mapDef = null;
@@ -188,7 +179,6 @@ export class Game {
     this.onsenEvent = null;
     this.onsenResult = null;
     this.onsenReturnNode = null;
-    this.screenCharm = false;
     this.screen = "title";
     this.render();
   }
@@ -247,48 +237,152 @@ export class Game {
     this.render();
   }
 
-  // ── プロローグ：お豊とろかし ────────────────────────────────
+  // ── プロローグ：お豊とろかし導入 ──────────────────────────────
 
   beginCharmIntro(): void {
-    this.screen = "charm_intro";
+    this.screen = "torokashi_intro";
     this.page = 0;
     this.render();
   }
 
-  /** とろかしバトル開始（プロローグお豊／道中の葵で共用）。 */
-  beginCharmBattle(enemyDefId: string, virgin: boolean): void {
-    this.charmEnemyDefId = enemyDefId;
-    this.charmFirstTime = virgin; // 処女喪失回かどうか（葵は経験済み＝常に false）
-    this.charmRng = createRng(hashSeed("charm:" + enemyDefId));
+  // ── とろかし流ミニゲーム ────────────────────────────────────
+
+  /** とろかし遭遇開始（プロローグお豊／道中の葵・むすめしかばねで共用）。 */
+  beginTorokashi(enemyDefId: string): void {
+    const def = this.db.torokashiEnemies.get(enemyDefId);
+    if (!def) return;
+    this.torokashiEnemyDefId = enemyDefId;
+    this.torokashiRng = createRng(hashSeed("torokashi:" + enemyDefId));
     this.log = [];
-    const started = startCharmBattle(
-      this.db,
-      {
-        enemyDefId,
-        hp: this.run.hp,
-        maxHp: this.run.maxHp,
-        sextech: this.run.sextech,
-        virgin,
-      },
-      this.charmRng,
-    );
-    this.charm = started.state;
-    this.charmTodomeArmed = false;
-    this.pushCharmEvents(started.events);
-    this.screenCharm = true; // render() は screenCharm 優先で charm 画面を描く
+    const started = startTorokashi(def, { enemyDefId, hp: this.run.hp, maxHp: this.run.maxHp }, this.torokashiRng);
+    this.torokashi = started.state;
+    this.pushTorokashiEvents(started.events);
+    this.screen = "battle"; // renderTorokashiが呼ばれるようにbattle screenを使わず、render()でdispatch
+    this.screen = "battle"; // reset — actual rendering dispatched via render()
+    // Use a dedicated screen name recognized in render():
+    // We need to render via renderTorokashi. Use the "battle" screen override:
     this.render();
   }
 
-  beginCharmResult(): void {
-    this.screen = "charm_result";
-    this.page = 0;
-    this.screenCharm = false;
+  /** とろかし：属性ボタンを押した（choosing → reacting）。 */
+  torokashiSelect(attr: SexAttr): void {
+    if (!this.torokashi) return;
+    const def = this.db.torokashiEnemies.get(this.torokashiEnemyDefId);
+    if (!def) return;
+    const r = selectAttr(this.torokashi, def, attr, this.torokashiRng);
+    this.torokashi = r.state;
+    this.pushTorokashiEvents(r.events);
     this.render();
+  }
+
+  /** とろかし：「続ける」ボタン（reacting → choosing or madamada）。 */
+  torokashiNext(): void {
+    if (!this.torokashi) return;
+    const def = this.db.torokashiEnemies.get(this.torokashiEnemyDefId);
+    if (!def) return;
+    const r = advanceHand(this.torokashi, def, this.torokashiRng);
+    this.torokashi = r.state;
+    this.pushTorokashiEvents(r.events);
+    this.render();
+  }
+
+  /** とろかし：「まだまだ！」ボタン（madamada → choosing 次ループ or done）。 */
+  torokashiMadamada(): void {
+    if (!this.torokashi) return;
+    const def = this.db.torokashiEnemies.get(this.torokashiEnemyDefId);
+    if (!def) return;
+    const r = madamada(this.torokashi, def, this.torokashiRng);
+    this.torokashi = r.state;
+    this.pushTorokashiEvents(r.events);
+    if (this.torokashi.phase === "done") {
+      this.applyTorokashiOutcome();
+      return;
+    }
+    this.render();
+  }
+
+  /** とろかし：「終わる」ボタン（madamada → done）。 */
+  torokashiFinish(): void {
+    if (!this.torokashi) return;
+    const def = this.db.torokashiEnemies.get(this.torokashiEnemyDefId);
+    if (!def) return;
+    const r = resolveTorokashi(this.torokashi, def);
+    this.torokashi = r.state;
+    this.pushTorokashiEvents(r.events);
+    this.applyTorokashiOutcome();
+  }
+
+  /** とろかし結末を RunState に反映する。 */
+  private applyTorokashiOutcome(): void {
+    const t = this.torokashi;
+    if (!t || t.phase !== "done") return;
+    this.run.hp = t.hp; // HPを引き継ぐ
+
+    const def = this.db.torokashiEnemies.get(this.torokashiEnemyDefId);
+
+    if (t.outcome === "failure") {
+      // 失敗 → 通常戦闘へ移行
+      this.torokashi = null;
+      const enemyGroup = [this.torokashiEnemyDefId];
+      this.battleTitle = "第1エリア・いんなか村周辺";
+      this.battleFlavorKey = `battle.${this.torokashiEnemyDefId}.encounter`;
+      this.battleHintKey = "battle.hint";
+      this.battleIsBoss = false;
+      this.startNormalBattle(enemyGroup, hashSeed("torokashi_fail:" + this.torokashiEnemyDefId));
+      return;
+    }
+
+    // lead / indulgent → 仲間加入処理
+    const joinId = def?.joinCompanionId;
+    if (joinId && !this.run.companions.some((c) => c.id === joinId)) {
+      this.run.companions.push({ id: joinId, affection: "mid" });
+      // 仲間アクティブカードをデッキへ固定投入
+      const activeId = this.db.companions.get(joinId)?.activeCardId;
+      if (activeId && !this.run.deck.some((c) => c.defId === activeId)) {
+        this.cardSeq += 1;
+        this.run.deck.push({ uid: `${activeId}@comp${this.cardSeq}`, defId: activeId });
+      }
+    }
+    if (joinId) {
+      this.run.flags[`${joinId}Joined`] = true;
+    } else {
+      this.run.rescuedCount += 1;
+    }
+
+    // lead: 追加報酬
+    if (t.outcome === "lead") {
+      this.run.zeni += 15;
+      this.run.costume = "normal";
+      // sizaHitCounts に弱点hit記録
+      if (def) {
+        for (const attr of def.weakAttrs) {
+          this.run.sizaHitCounts[attr] = (this.run.sizaHitCounts[attr] ?? 0) + 1;
+        }
+      }
+    }
+
+    this.screen = "torokashi_result";
+    this.page = 0;
+    this.render();
+  }
+
+  /** とろかしリザルト画面の「次へ」終端で進む先。 */
+  afterTorokashiDone(): void {
+    if (this.torokashiEnemyDefId === "otoyo") {
+      this.enterMap(); // プロローグ完了→田舎マップへ
+    } else if (this.activeNodeId) {
+      const def = this.db.torokashiEnemies.get(this.torokashiEnemyDefId);
+      const notice = def?.joinCompanionId
+        ? `${def.name}が仲間に加わった`
+        : `${def?.name ?? "相手"}を救った（救済者 +1）`;
+      this.advanceTo(this.activeNodeId, notice);
+    } else {
+      this.enterMap();
+    }
   }
 
   gameOver(): void {
     this.screen = "gameover";
-    this.screenCharm = false;
     this.render();
   }
 
@@ -560,8 +654,6 @@ export class Game {
 
   /**
    * 出現条件を満たす温泉イベントから1つを抽選する。
-   * その時いる仲間（加入済み companion）と、救済した村娘（単独＝minRescued1／複数＝同2）が
-   * 候補になり、誰が来るかはランダム。決定論のためノードIDと救済人数からシードを派生させる。
    */
   private pickOnsen(ids: string[], nodeId: string): OnsenEvent | null {
     const pool = ids
@@ -632,14 +724,16 @@ export class Game {
     this.render();
   }
 
-  /** 結末を確定し、せっくすてく加算（スコア比例）・全回復を適用する（1回だけ）。 */
+  /** 結末を確定し、sizaGain加算・全回復を適用する（1回だけ）。 */
   private applyOnsenOutcome(): void {
     const ev = this.onsenEvent;
     if (!ev) return;
     const result = resolveOnsen(ev, this.onsenScore);
     this.onsenResult = result;
-    if (result.sextechGain > 0) {
-      this.run.sextech[result.sextechPart] += result.sextechGain;
+    if (result.sizaGain > 0) {
+      // sizaGainは汎用カウンタとして加算（どの属性に当たるかは温泉では特定しない）
+      // 簡易実装：siza全体のカウントとして"any"キーで管理
+      this.run.sizaHitCounts["seikou"] = (this.run.sizaHitCounts["seikou"] ?? 0) + result.sizaGain;
     }
     if (result.fullHeal) {
       // lead：主導できた褒美として全回復＋刀打ち直し＋衣を整える。
@@ -648,7 +742,6 @@ export class Game {
       this.run.costume = "normal";
     } else {
       // indulgent：蕩かされて回復は中途半端。最大HPの ONSEN_INDULGENT_RATIO まで（下回っている時だけ引き上げ）。
-      // 刀の打ち直しは入らない＝ミニゲームの出来が刀メンテにも響く（docs/10「全回復のトレードオフ化」）。
       const floor = Math.floor(this.run.maxHp * ONSEN_INDULGENT_RATIO);
       this.run.hp = Math.max(this.run.hp, floor);
       this.run.costume = "normal"; // 湯で衣だけは整う
@@ -665,11 +758,11 @@ export class Game {
       return;
     }
     const node = this.onsenReturnNode;
-    const gained = (this.onsenResult?.sextechGain ?? 0) > 0;
+    const gained = (this.onsenResult?.sizaGain ?? 0) > 0;
     const notice =
       this.onsenResult?.outcome === "lead"
-        ? `湯あがり、自信と経験を積んだ（全回復＋刀の打ち直し）${gained ? "／せっくすてく獲得" : ""}`
-        : `湯あがり、すっかり蕩かされた（回復は中途半端）${gained ? "／せっくすてく獲得" : ""}`;
+        ? `湯あがり、自信と経験を積んだ（全回復＋刀の打ち直し）${gained ? "／寸法の心得 +1" : ""}`
+        : `湯あがり、すっかり蕩かされた（回復は中途半端）${gained ? "／寸法の心得 +1" : ""}`;
     this.onsenEvent = null;
     this.onsenResult = null;
     this.onsenReturnNode = null;
@@ -685,8 +778,8 @@ export class Game {
     if (!choice) return;
     const outcome = choice.outcome;
     switch (outcome.kind) {
-      case "start_charm_battle":
-        this.beginCharmBattle(outcome.enemyId, false); // 道中とろかしの相手（葵）は経験済み
+      case "start_torokashi":
+        this.beginTorokashi(outcome.enemyId);
         break;
       case "start_normal_battle":
         this.battleTitle = "第1エリア・いんなか村周辺";
@@ -831,109 +924,6 @@ export class Game {
     else this.enterMap();
   }
 
-  // ── とろかしバトルの操作 ────────────────────────────────────
-
-  charmPlay(cardId: string): void {
-    if (!this.charm || !canPlaySexCard(this.db, this.charm, cardId)) return;
-    const r = playSexCard(this.db, this.charm, cardId, null, this.charmRng);
-    this.charm = r.state;
-    this.charmTodomeArmed = false;
-    this.pushCharmEvents(r.events);
-    if (this.charm.phase === "lost") {
-      this.gameOver();
-      return;
-    }
-    this.render();
-  }
-
-  charmTodome(): void {
-    if (!this.charm) return;
-    if (!this.charmIsTodomeReady()) return; // とどめは相手が放心（気力0）のときのみ
-    // 1タップ目は確認、2タップ目で実行。
-    if (!this.charmTodomeArmed) {
-      this.charmTodomeArmed = true;
-      this.render();
-      return;
-    }
-    const r = useTodome(this.db, this.charm, null, this.charmRng);
-    this.charm = r.state;
-    this.charmTodomeArmed = false;
-    this.pushCharmEvents(r.events);
-    if (this.charm.phase === "won") {
-      this.onCharmWon();
-      return;
-    }
-    this.render();
-  }
-
-  /** とろかし勝利の共通処理：HP引き継ぎ・仲間加入・結果画面へ。 */
-  private onCharmWon(): void {
-    if (!this.charm) return;
-    this.run.hp = this.charm.hp;
-    const def = this.db.charmEnemies.get(this.charmEnemyDefId);
-    const joinId = def?.joinCompanionId;
-    if (joinId && !this.run.companions.some((c) => c.id === joinId)) {
-      this.run.companions.push({ id: joinId, affection: "mid" });
-      // 仲間アクティブカードをデッキへ固定投入（docs/03・08 §9「常にデッキに固定投入」）。
-      const activeId = this.db.companions.get(joinId)?.activeCardId;
-      if (activeId && !this.run.deck.some((c) => c.defId === activeId)) {
-        this.cardSeq += 1;
-        this.run.deck.push({ uid: `${activeId}@comp${this.cardSeq}`, defId: activeId });
-      }
-    }
-    if (joinId) this.run.flags[`${joinId}Joined`] = true;
-    else this.run.rescuedCount += 1; // 加入しない相手（むすめしかばね等）は「とどめ！」＝救済者カウント+1（docs/04「救済者システム」）
-    if (this.charmEnemyDefId === "otoyo") this.run.flags.otoyoDeflowered = true; // とどめ（中出し）で処女喪失を永続化
-    this.beginCharmResult();
-  }
-
-  charmEndTurn(): void {
-    if (!this.charm || this.charm.phase !== "player") return;
-    const r = endCharmTurn(this.db, this.charm, this.charmRng);
-    this.charm = r.state;
-    this.charmTodomeArmed = false;
-    this.pushCharmEvents(r.events);
-    if (this.charm.phase === "lost") {
-      this.gameOver();
-      return;
-    }
-    this.render();
-  }
-
-  charmAllocate(part: keyof SextechState): void {
-    if (!this.charm) return;
-    this.charm = allocateSextech(this.charm, part);
-    this.run.sextech = this.charm.sextech;
-    this.render();
-  }
-
-  charmAuto(): void {
-    if (!this.charm) return;
-    this.charm = autoAllocateSextech(this.charm);
-    this.run.sextech = this.charm.sextech;
-    this.render();
-  }
-
-  charmIsTodomeReady(): boolean {
-    return this.charm ? todomeReady(this.charm, null) : false;
-  }
-
-  /** とろかし結果画面の「次へ」終端で進む先（プロローグ＝マップへ／道中＝マップへ戻る）。 */
-  afterCharmResult(): void {
-    if (this.charmEnemyDefId === "otoyo") {
-      this.enterMap(); // プロローグ完了→田舎マップへ
-    } else if (this.activeNodeId) {
-      const def = this.db.charmEnemies.get(this.charmEnemyDefId);
-      // 加入する相手（葵）は仲間化、加入しない相手（むすめしかばね）は救済者として人間に戻る。
-      const notice = def?.joinCompanionId
-        ? `${def.name}が仲間に加わった`
-        : `${def?.name ?? "相手"}を救った（救済者 +1）`;
-      this.advanceTo(this.activeNodeId, notice);
-    } else {
-      this.enterMap();
-    }
-  }
-
   // ── ログ整形 ────────────────────────────────────────────────
 
   private pushBattleEvents(events: BattleEvent[]): void {
@@ -944,10 +934,10 @@ export class Game {
     }
   }
 
-  private pushCharmEvents(events: CharmEvent[]): void {
-    if (!this.charm) return;
+  private pushTorokashiEvents(events: TorokashiEvent[]): void {
+    if (!this.torokashi) return;
     for (const ev of events) {
-      const line = describeCharmEvent(this.db, this.charm, ev);
+      const line = describeTorokashiEvent(this.db, this.torokashi, ev);
       if (line) this.log.push(line);
     }
   }
@@ -955,8 +945,9 @@ export class Game {
   // ── 描画ディスパッチ ────────────────────────────────────────
 
   render(): void {
-    if (this.screenCharm) {
-      renderCharm(this, this.root);
+    // とろかし中は専用レンダラを優先
+    if (this.torokashi && this.screen !== "torokashi_result") {
+      renderTorokashi(this, this.root);
       return;
     }
     switch (this.screen) {
@@ -965,8 +956,8 @@ export class Game {
       case "area1_lead": renderArea1Lead(this, this.root); break;
       case "battle": renderBattle(this, this.root); break;
       case "nora_result": renderNoraResult(this, this.root); break;
-      case "charm_intro": renderCharmIntro(this, this.root); break;
-      case "charm_result": renderCharmResult(this, this.root); break;
+      case "torokashi_intro": renderTorokashiIntro(this, this.root); break;
+      case "torokashi_result": renderTorokashiResult(this, this.root); break;
       case "map": renderMap(this, this.root); break;
       case "event": renderEvent(this, this.root); break;
       case "camp": renderCamp(this, this.root); break;
