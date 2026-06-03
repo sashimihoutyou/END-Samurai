@@ -1,6 +1,6 @@
 import type { CardDef } from "../model/card.js";
 import type { EnemyDef } from "../model/enemy.js";
-import type { CharmEnemyDef, SexCardDef } from "../model/charm.js";
+import type { TorokashiEnemyDef } from "../model/torokashi.js";
 import type { CompanionDef } from "../model/companion.js";
 import type { EventDef, MapDef } from "../model/map.js";
 import type { OnsenEvent } from "../model/onsen.js";
@@ -16,8 +16,7 @@ export interface ContentDB {
   cards: ReadonlyMap<string, CardDef>;
   enemies: ReadonlyMap<string, EnemyDef>;
   swordStages: ReadonlyMap<SwordPart, SwordPartStages>;
-  sexCards: ReadonlyMap<string, SexCardDef>;
-  charmEnemies: ReadonlyMap<string, CharmEnemyDef>;
+  torokashiEnemies: ReadonlyMap<string, TorokashiEnemyDef>;
   maps: ReadonlyMap<string, MapDef>;
   events: ReadonlyMap<string, EventDef>;
   onsen: ReadonlyMap<string, OnsenEvent>;
@@ -26,9 +25,6 @@ export interface ContentDB {
   shops: ShopData;
   text: TextData;
 }
-
-/** 魅了バトルのルールが必要とするコンテンツの部分集合（ContentDB が満たす）。 */
-export type CharmContentDB = Pick<ContentDB, "combat" | "sexCards" | "charmEnemies">;
 
 /** 任意のオブジェクト（importしたJSON群）を検証し、ContentDBを返す。 */
 export function loadContent(raw: unknown): ContentDB {
@@ -54,16 +50,10 @@ export function loadContent(raw: unknown): ContentDB {
     }
   }
 
-  const sexCards = new Map<string, SexCardDef>();
-  for (const c of parsed.sexCards) {
-    if (sexCards.has(c.id)) throw new Error(`重複する性技カードID: ${c.id}`);
-    sexCards.set(c.id, c as SexCardDef);
-  }
-
-  const charmEnemies = new Map<string, CharmEnemyDef>();
-  for (const e of parsed.charmEnemies) {
-    if (charmEnemies.has(e.id)) throw new Error(`重複する魅了敵ID: ${e.id}`);
-    charmEnemies.set(e.id, e as CharmEnemyDef);
+  const torokashiEnemies = new Map<string, TorokashiEnemyDef>();
+  for (const e of parsed.torokashiEnemies) {
+    if (torokashiEnemies.has(e.id)) throw new Error(`重複するとろかし敵ID: ${e.id}`);
+    torokashiEnemies.set(e.id, e as TorokashiEnemyDef);
   }
 
   const maps = new Map<string, MapDef>();
@@ -127,7 +117,7 @@ export function loadContent(raw: unknown): ContentDB {
     onsen.set(o.id, o as OnsenEvent);
   }
 
-  return { combat: parsed.combat, cards, enemies, swordStages, sexCards, charmEnemies, maps, events, onsen, companions, rewards: parsed.rewards, shops: parsed.shops as ShopData, text: parsed.text };
+  return { combat: parsed.combat, cards, enemies, swordStages, torokashiEnemies, maps, events, onsen, companions, rewards: parsed.rewards, shops: parsed.shops as ShopData, text: parsed.text };
 }
 
 /** 指定部位の段階定義を引く。未知のIDはエラー（フェイルファスト）。 */

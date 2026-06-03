@@ -43,7 +43,7 @@ export interface MapDef {
 
 /** イベントの選択結果（docs/08 §2.8 EventChoice.outcome）。 */
 export type EventOutcome =
-  | { kind: "start_charm_battle"; enemyId: string }
+  | { kind: "start_torokashi"; enemyId: string }
   | { kind: "start_normal_battle"; enemyGroup: string[] }
   | { kind: "heal"; amount: number }
   | { kind: "continue" }; // 何も起こさずマップへ戻る

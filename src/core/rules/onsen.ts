@@ -40,8 +40,7 @@ export function resolveOnsen(event: OnsenEvent, totalScore: number): OnsenResult
   return {
     outcome: lead ? "lead" : "indulgent",
     score,
-    sextechPart: event.rewardPart,
-    sextechGain: Math.floor(score / event.rewardDivisor),
+    sizaGain: lead ? event.sizaGain : 0,
     fullHeal: lead,
   };
 }

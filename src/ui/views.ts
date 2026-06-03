@@ -141,7 +141,7 @@ export function renderNoraResult(game: Game, root: HTMLElement): void {
   root.querySelector<HTMLButtonElement>("#next")?.addEventListener("click", () => game.beginCharmIntro());
 }
 
-export function renderCharmIntro(game: Game, root: HTMLElement): void {
+export function renderTorokashiIntro(game: Game, root: HTMLElement): void {
   const db = game.db;
   const pages = tLines(db, "charm.otoyo.intro");
   const last = game.page >= pages.length - 1;
@@ -154,26 +154,23 @@ export function renderCharmIntro(game: Game, root: HTMLElement): void {
     </div>
   `;
   root.querySelector<HTMLButtonElement>("#next")?.addEventListener("click", () =>
-    game.nextPage(pages.length, () => game.beginCharmBattle("otoyo", !game.run.flags.otoyoDeflowered)),
+    game.nextPage(pages.length, () => game.beginTorokashi("otoyo")),
   );
 }
 
-export function renderCharmResult(game: Game, root: HTMLElement): void {
+export function renderTorokashiResult(game: Game, root: HTMLElement): void {
   const db = game.db;
-  const defId = game.charmEnemyDefId;
+  const defId = game.torokashiEnemyDefId;
   // 終了台詞・加入文・進む先を相手別に出し分ける。
   let pages: string[];
   let footer: string;
   let lastLabel: string;
   if (defId === "otoyo") {
-    // 初回（処女喪失回）は加入イベント、再戦回は短い再戦台詞。docs/09 §4
-    pages = tLines(db, game.charmFirstTime ? "charm.result.join" : "charm.result.rematch");
-    footer = game.charmFirstTime
-      ? `<p class="result-stat">仲間：${escapeHtml(companionLine(game))}／こゆき HP ${game.run.hp}/${game.run.maxHp}</p>
-         <p class="title-note">——プロローグはここまで。お豊を連れて、こゆきの旅が始まる。</p>`
-      : `<p class="result-stat">お豊（鍛冶屋）／こゆき HP ${game.run.hp}/${game.run.maxHp}</p>`;
+    pages = tLines(db, "charm.result.join");
+    footer = `<p class="result-stat">仲間：${escapeHtml(companionLine(game))}／こゆき HP ${game.run.hp}/${game.run.maxHp}</p>
+       <p class="title-note">——プロローグはここまで。お豊を連れて、こゆきの旅が始まる。</p>`;
     lastLabel = "旅に出る";
-  } else if (db.charmEnemies.get(defId)?.joinCompanionId) {
+  } else if (db.torokashiEnemies.get(defId)?.joinCompanionId) {
     // 加入する相手（葵）：仲間加入リザルト。
     pages = tLines(db, `charm.result.${defId}.join`);
     footer = `<p class="result-stat">仲間：${escapeHtml(companionLine(game))}／こゆき HP ${game.run.hp}/${game.run.maxHp}</p>`;
@@ -195,7 +192,7 @@ export function renderCharmResult(game: Game, root: HTMLElement): void {
     </div>
   `;
   root.querySelector<HTMLButtonElement>("#next")?.addEventListener("click", () =>
-    game.nextPage(pages.length, () => game.afterCharmResult()),
+    game.nextPage(pages.length, () => game.afterTorokashiDone()),
   );
 }
 
@@ -262,7 +259,7 @@ export function renderMap(game: Game, root: HTMLElement): void {
         </div>
         <div class="bar hp" style="margin:4px 0;"><span class="${hpCls}" style="width:${hpPct}%"></span></div>
         <div class="sword">${swordLine(db, game.run.sword)}</div>
-        <div class="sword">仲間：${escapeHtml(companionLine(game))}　／　せっくすてく 身${game.run.sextech.mi}・鎬${game.run.sextech.shinogi}・切先${game.run.sextech.kissaki}</div>
+        <div class="sword">仲間：${escapeHtml(companionLine(game))}</div>
       </div>
       ${otoyoBtn}
       <p class="hint" style="margin-top:14px;">進む先を選ぶ：</p>
@@ -518,11 +515,11 @@ export function renderOnsen(game: Game, root: HTMLElement): void {
 
   // 結末（lead / indulgent）：ページ送り
   const lead = game.onsenResult?.outcome === "lead";
-  const gain = game.onsenResult?.sextechGain ?? 0;
+  const gain = game.onsenResult?.sizaGain ?? 0;
   const pages = tLines(db, lead ? ev.leadOutcomeKey : ev.indulgentOutcomeKey);
   const last = game.page >= pages.length - 1;
   const footer = last
-    ? `<p class="result-stat">せっくすてく 身${game.run.sextech.mi}・鎬${game.run.sextech.shinogi}・切先${game.run.sextech.kissaki}${gain > 0 ? `（+${gain}）` : ""}　／　こゆき HP ${game.run.hp}/${game.run.maxHp}（全回復）</p>`
+    ? `<p class="result-stat">こゆき HP ${game.run.hp}/${game.run.maxHp}${lead ? "（全回復）" : ""}${gain > 0 ? "　／　寸法の心得+1" : ""}</p>`
     : "";
   root.innerHTML = `
     <div class="screen narration-screen onsen">

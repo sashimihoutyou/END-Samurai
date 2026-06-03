@@ -4,7 +4,7 @@
     "kind": "charm_encounter",
     "introKey": "charm.aoi.intro",
     "choices": [
-      { "labelKey": "charm.aoi.optin", "outcome": { "kind": "start_charm_battle", "enemyId": "aoi" } }
+      { "labelKey": "charm.aoi.optin", "outcome": { "kind": "start_torokashi", "enemyId": "aoi" } }
     ]
   },
   {
@@ -13,7 +13,7 @@
     "introKey": "charm.musume.intro",
     "choices": [
       { "labelKey": "charm.musume.attack", "outcome": { "kind": "start_normal_battle", "enemyGroup": ["musume_shikabane"] } },
-      { "labelKey": "charm.musume.optin", "outcome": { "kind": "start_charm_battle", "enemyId": "musume_shikabane" } }
+      { "labelKey": "charm.musume.optin", "outcome": { "kind": "start_torokashi", "enemyId": "musume_shikabane" } }
     ]
   }
 ]
