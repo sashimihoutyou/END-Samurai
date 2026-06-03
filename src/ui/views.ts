@@ -85,9 +85,12 @@ export function renderTitle(game: Game, root: HTMLElement): void {
   const db = game.db;
   root.innerHTML = `
     <div class="screen title-screen">
-      <h1 class="title-main">${escapeHtml(tLine(db, "title.main"))}</h1>
+      <p class="title-sub" style="margin-bottom:12px;font-size:12px;letter-spacing:4px;color:#6f655a;">— α版 —</p>
+      <h1 class="title-main" style="font-size:28px;line-height:1.5;">${escapeHtml(tLine(db, "title.main"))}</h1>
       <p class="title-sub">${escapeHtml(tLine(db, "title.sub"))}</p>
-      <button id="start" class="bigbtn">${escapeHtml(tLine(db, "title.start"))}</button>
+      <div style="margin-top:40px;max-width:280px;margin-left:auto;margin-right:auto;">
+        <button id="start" class="bigbtn">${escapeHtml(tLine(db, "title.start"))}</button>
+      </div>
       <p class="title-note">${escapeHtml(tLine(db, "title.note"))}</p>
     </div>
   `;
@@ -197,14 +200,14 @@ export function renderCharmResult(game: Game, root: HTMLElement): void {
 }
 
 const NODE_TAG: Record<NodeType, string> = {
-  start: "出立",
-  battle: "戦闘",
-  boss: "ボス",
-  camp: "野営地",
-  rest: "休息",
-  charm_encounter: "遭遇",
-  event: "イベント",
-  onsen: "温泉",
+  start:            "出立",
+  battle:           "⚔ 戦闘",
+  boss:             "💀 ボス",
+  camp:             "🏕 野営地",
+  rest:             "🌿 休息",
+  charm_encounter:  "💕 遭遇",
+  event:            "📜 出来事",
+  onsen:            "♨ 温泉",
 };
 
 export function renderMap(game: Game, root: HTMLElement): void {
@@ -232,7 +235,7 @@ export function renderMap(game: Game, root: HTMLElement): void {
   const choices = nexts
     .map(
       (n: MapNode) =>
-        `<button class="bigbtn mapnode" data-node="${n.id}"><span class="node-tag">${NODE_TAG[n.type]}</span> ${escapeHtml(n.label)}</button>`,
+        `<button class="bigbtn mapnode" data-node="${n.id}"><span class="node-tag ${n.type}">${NODE_TAG[n.type]}</span> ${escapeHtml(n.label)}</button>`,
     )
     .join("");
 
@@ -244,18 +247,25 @@ export function renderMap(game: Game, root: HTMLElement): void {
     ? `<button id="otoyo" class="bigbtn">お豊に刀を診てもらう（打ち直し・パーツ交換）</button>`
     : "";
 
+  const hpPct = Math.max(0, (game.run.hp / game.run.maxHp) * 100);
+  const hpCls = hpPct < 25 ? "low" : hpPct < 50 ? "warn" : "";
   root.innerHTML = `
     <div class="screen narration-screen">
       <h1>田舎・道中　― ${escapeHtml(cur?.label ?? "")}</h1>
       ${notice}
       ${intro}
-      <div class="koyuki" style="margin:12px 0;">
-        <div>こゆき　HP ${game.run.hp}/${game.run.maxHp}　／　所持 ${game.run.zeni}銭</div>
+      <div class="koyuki" style="margin:10px 0;">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:4px;">
+          <span><strong>こゆき</strong></span>
+          <span>HP <strong>${game.run.hp}</strong>/${game.run.maxHp}</span>
+          <span>💰 ${game.run.zeni}銭</span>
+        </div>
+        <div class="bar hp" style="margin:4px 0;"><span class="${hpCls}" style="width:${hpPct}%"></span></div>
         <div class="sword">${swordLine(db, game.run.sword)}</div>
         <div class="sword">仲間：${escapeHtml(companionLine(game))}　／　せっくすてく 身${game.run.sextech.mi}・鎬${game.run.sextech.shinogi}・切先${game.run.sextech.kissaki}</div>
       </div>
       ${otoyoBtn}
-      <p class="hint">進む先を選ぶ：</p>
+      <p class="hint" style="margin-top:14px;">進む先を選ぶ：</p>
       <div class="map-choices">${choices}</div>
       ${goal}
     </div>
@@ -305,12 +315,18 @@ export function renderCamp(game: Game, root: HTMLElement): void {
   const node = game.activeNodeId ? game.findNode(game.activeNodeId) : undefined;
   const text = node?.textKey ? tLine(db, node.textKey) : tLine(db, "map.inaka.camp");
 
-  // 共通ヘッダ：直近の結果（買った・売った・休んだ）＋こゆきの状態と所持金。
+  const campHpPct = Math.max(0, (game.run.hp / game.run.maxHp) * 100);
+  const campHpCls = campHpPct < 25 ? "low" : campHpPct < 50 ? "warn" : "";
   const head = `
     <h1>野営地 ― ${escapeHtml(node?.label ?? "")}</h1>
     ${game.campNotice ? `<p class="result-head">${escapeHtml(game.campNotice)}</p>` : ""}
-    <div class="koyuki" style="margin:12px 0;">
-      <div>こゆき　HP ${game.run.hp}/${game.run.maxHp}　／　所持 ${game.run.zeni}銭</div>
+    <div class="koyuki" style="margin:10px 0;">
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:4px;">
+        <span><strong>こゆき</strong></span>
+        <span>HP <strong>${game.run.hp}</strong>/${game.run.maxHp}</span>
+        <span>💰 ${game.run.zeni}銭</span>
+      </div>
+      <div class="bar hp" style="margin:4px 0;"><span class="${campHpCls}" style="width:${campHpPct}%"></span></div>
       <div class="sword">${swordLine(db, game.run.sword)}</div>
     </div>`;
 
