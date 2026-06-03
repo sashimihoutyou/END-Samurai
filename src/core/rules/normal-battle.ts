@@ -186,10 +186,9 @@ function applyCompanionPassives(
     const def = db.companions.get(c.id);
     if (!def) continue;
     if (def.passive === "battle_start_defense") {
-      // 鍛えの目：防御値ボーナス＋（毎ターンの防御プールへ充填される）。
+      // 鍛えの目：戦闘開始1ターン目のみ防御プールに加算（毎ターン再充填には含めない）。
       const amount = AFFECTION_DEFENSE[c.affection];
-      state.bonusPools.defense += amount;
-      state.blockPool += amount; // 初回ターン分も即時反映
+      state.blockPool += amount;
       events.push({ type: "CompanionBuff", companionId: c.id, label: `鍛えの目：防御値+${amount}` });
     } else if (def.passive === "battle_start_upgrade") {
       // 見取り稽古：手札の技カードを1ランク上へ一時置換（affectionで枚数）。
