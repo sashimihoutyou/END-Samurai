@@ -1,0 +1,31 @@
+[
+  {
+    "id": "otoyo",
+    "name": "お豊",
+    "weakAttrs": ["kuchizuke"],
+    "nearAttrs": ["seikou", "ushirodori"],
+    "sizePreference": "any",
+    "handCount": 2,
+    "hintKey": "torokashi.otoyo.hint",
+    "joinCompanionId": "otoyo"
+  },
+  {
+    "id": "aoi",
+    "name": "葵",
+    "weakAttrs": ["hogushi"],
+    "nearAttrs": ["seikou", "uradori"],
+    "sizePreference": "medium",
+    "handCount": 2,
+    "hintKey": "torokashi.aoi.hint",
+    "joinCompanionId": "aoi"
+  },
+  {
+    "id": "musume_shikabane",
+    "name": "むすめしかばね",
+    "weakAttrs": ["chichikuri"],
+    "nearAttrs": ["kuchizuke", "seikou"],
+    "sizePreference": "large",
+    "handCount": 1,
+    "hintKey": "torokashi.musume.hint"
+  }
+]
