@@ -90,11 +90,13 @@ export function renderBattle(game: Game, root: HTMLElement): void {
       const intent = e.intents[e.intentIndex];
       const grabbing = battle.grabbedBy === e.uid;
       const badges = statusBadges(e.statuses);
+      const hpPct = Math.max(0, (e.hp / e.maxHp) * 100);
+      const hpCls = hpPct < 25 ? "low" : hpPct < 50 ? "warn" : "";
       return `<div class="enemy ${alive ? "" : "dead"}">
-        <div class="enemy-name">${escapeHtml(e.name)}${e.defense > 0 ? ` 🛡${e.defense}` : ""}${grabbing ? " 🤚" : ""}</div>
-        <div class="enemy-hp">HP ${e.hp}/${e.maxHp}${badges ? `　${badges}` : ""}</div>
-        <div class="bar"><span style="width:${(e.hp / e.maxHp) * 100}%"></span></div>
-        ${alive ? `<div class="intent">予告: ${escapeHtml(intent.label)}（${intentSummary(e)}）</div>` : `<div class="intent">―</div>`}
+        <div class="enemy-name">${escapeHtml(e.name)}${e.defense > 0 ? `　<span class="badge gold">🛡${e.defense}</span>` : ""}${grabbing ? `　<span class="badge red">掴み</span>` : ""}</div>
+        <div class="enemy-hp">HP <strong>${e.hp}</strong>/${e.maxHp}${badges ? `　${badges}` : ""}</div>
+        <div class="bar hp"><span class="${hpCls}" style="width:${hpPct}%"></span></div>
+        ${alive ? `<div class="intent">予告: ${escapeHtml(intent.label)}（${intentSummary(e)}）</div>` : `<div class="intent dead-mark">― 討ち取った ―</div>`}
       </div>`;
     })
     .join("");
@@ -108,9 +110,12 @@ export function renderBattle(game: Game, root: HTMLElement): void {
       const uses = def.uses != null ? `・残${c.usesLeft ?? def.uses}` : "";
       const cls = def.category === "item" ? "item" : def.category === "companion_active" ? "companion" : "";
       const used = def.category === "companion_active" && battle.companionUsed.includes(def.id) ? "・使用済" : "";
+      const apPips = Array.from({ length: battle.apMax }, (_, i) =>
+        `<span class="ap-pip ${i < cost ? "filled" : ""}"></span>`
+      ).join("");
       return `<button class="card ${cls} ${playable ? "" : "disabled"}" data-uid="${c.uid}" title="${escapeHtml(flavor)}" ${playable ? "" : "disabled"}>
         <div class="card-name">${escapeHtml(def.name)}</div>
-        <div class="card-ap">AP ${cost}${uses}${used}</div>
+        <div class="card-ap"><span class="ap-pips">${apPips}</span> AP${cost}${uses}${used}</div>
       </button>`;
     })
     .join("");
@@ -124,21 +129,43 @@ export function renderBattle(game: Game, root: HTMLElement): void {
        </div>`
     : "";
 
+  const koyukiHpPct = Math.max(0, (battle.hp / battle.maxHp) * 100);
+  const koyukiHpCls = koyukiHpPct < 25 ? "low" : koyukiHpPct < 50 ? "warn" : "";
+  const koyukiApPips = Array.from({ length: battle.apMax }, (_, i) =>
+    `<span class="ap-pip ${i < battle.ap ? "filled" : ""}"></span>`
+  ).join("");
+  const koyukiBadges: string[] = [];
+  if (battle.blockPool > 0) koyukiBadges.push(`<span class="badge gold">🛡${battle.blockPool}</span>`);
+  if (battle.dodgeNext) koyukiBadges.push(`<span class="badge blue">見切り</span>`);
+  if (battle.grabbedBy) koyukiBadges.push(`<span class="badge red">掴まれ中</span>`);
+  const koyukiStatusBadge = statusBadges(battle.statuses);
+  if (koyukiStatusBadge) koyukiBadges.push(koyukiStatusBadge);
+
   root.innerHTML = `
-    <h1>${escapeHtml(game.battleTitle)}${game.battleIsBoss ? "　― ボス戦" : ""}</h1>
+    <h1>${escapeHtml(game.battleTitle)}${game.battleIsBoss ? `　<span class="badge red">ボス戦</span>` : ""}</h1>
     <p class="flavor">${escapeHtml(tLine(db, game.battleFlavorKey))}</p>
-    <div class="status">ターン ${battle.turn}　<span class="hint">${escapeHtml(tLine(db, game.battleHintKey))}</span></div>
+    <div class="status">
+      <span>ターン <strong>${battle.turn}</strong></span>
+      <span class="hint">${escapeHtml(tLine(db, game.battleHintKey))}</span>
+    </div>
     <div class="enemies">${enemiesHtml}</div>
     <div class="koyuki">
-      <div>こゆき　HP ${battle.hp}/${battle.maxHp}　AP ${battle.ap}/${battle.apMax}　防御値 🛡${battle.blockPool}${battle.dodgeNext ? "　[見切り構え]" : ""}${battle.grabbedBy ? "　[掴まれ中]" : ""}${statusBadges(battle.statuses) ? `　${statusBadges(battle.statuses)}` : ""}</div>
-      <div class="sword">刀身[${stageName(db, battle.sword, "blade")}] 鍔[${stageName(db, battle.sword, "tsuba")}] 柄[${stageName(db, battle.sword, "tsuka")}]${COSTUME_LABEL[battle.costume]}</div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <span><strong>こゆき</strong></span>
+        <span>HP <strong>${battle.hp}</strong>/${battle.maxHp}</span>
+        <span>AP <span class="ap-pips">${koyukiApPips}</span> ${battle.ap}/${battle.apMax}</span>
+        ${koyukiBadges.join(" ")}
+      </div>
+      <div class="bar hp" style="margin:5px 0 3px;"><span class="${koyukiHpCls}" style="width:${koyukiHpPct}%"></span></div>
+      <div class="sword">刀身[${stageName(db, battle.sword, "blade")}]　鍔[${stageName(db, battle.sword, "tsuba")}]　柄[${stageName(db, battle.sword, "tsuka")}]${COSTUME_LABEL[battle.costume]}</div>
     </div>
     ${braceHtml}
+    <p class="hint" style="margin-bottom:6px;">手札（クリックで使用）</p>
     <div class="hand">${handHtml}</div>
     <div class="controls">
       <button id="endturn" ${battle.phase !== "player" ? "disabled" : ""}>ターン終了</button>
     </div>
-    <pre class="log">${escapeHtml(game.log.slice(-14).join("\n"))}</pre>
+    <pre class="log" id="battle-log">${escapeHtml(game.log.slice(-16).join("\n"))}</pre>
   `;
 
   root.querySelectorAll<HTMLButtonElement>(".card").forEach((btn) => {
@@ -148,4 +175,8 @@ export function renderBattle(game: Game, root: HTMLElement): void {
     btn.addEventListener("click", () => game.normalSetBrace(btn.dataset.brace as "ukeru" | "inasu"));
   });
   root.querySelector<HTMLButtonElement>("#endturn")?.addEventListener("click", () => game.normalEndTurn());
+
+  // ログを常に最下行まで自動スクロール
+  const logEl = root.querySelector<HTMLPreElement>("#battle-log");
+  if (logEl) logEl.scrollTop = logEl.scrollHeight;
 }

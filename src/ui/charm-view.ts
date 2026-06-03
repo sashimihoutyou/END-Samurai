@@ -99,15 +99,16 @@ export function renderCharm(game: Game, root: HTMLElement): void {
 
   const enemiesHtml = charm.enemies
     .map((e) => {
-      const qiPct = (e.qi / e.qiMax) * 100;
-      const gamanPct = (e.gaman / e.gamanMax) * 100;
-      return `<div class="enemy ${e.defeated ? "dead" : ""}">
-        <div class="enemy-name">${escapeHtml(e.name)}</div>
-        <div class="enemy-hp">気力 ${e.qi}/${e.qiMax}　気力防御 ${e.qiDefense}</div>
-        <div class="bar charm"><span style="width:${qiPct}%"></span></div>
-        <div class="enemy-hp">我慢 ${e.gaman}/${e.gamanMax}</div>
+      const qiPct = Math.max(0, (e.qi / e.qiMax) * 100);
+      const gamanPct = Math.max(0, (e.gaman / e.gamanMax) * 100);
+      const qiLow = qiPct < 30;
+      return `<div class="charm-enemy ${e.defeated ? "dead" : ""}">
+        <div class="enemy-name">${escapeHtml(e.name)}${e.qiDefense > 0 ? `　<span class="badge gold">気力防御${e.qiDefense}</span>` : ""}</div>
+        <div class="enemy-hp">気力 <strong>${e.qi}</strong>/${e.qiMax}${qiLow ? `　<span class="badge pink">もうすぐ…</span>` : ""}</div>
+        <div class="bar charm" style="height:10px;"><span style="width:${qiPct}%"></span></div>
+        <div class="enemy-hp" style="margin-top:5px;">我慢 <strong>${e.gaman}</strong>/${e.gamanMax}</div>
         <div class="bar gaman"><span style="width:${gamanPct}%"></span></div>
-        <div class="intent">${e.defeated ? "放心して動けない……" : `次：${escapeHtml(e.intents[e.intentIndex].label)}`}</div>
+        <div class="intent">${e.defeated ? "💫 放心して動けない……" : `次：${escapeHtml(e.intents[e.intentIndex].label)}`}</div>
       </div>`;
     })
     .join("");
@@ -147,24 +148,37 @@ export function renderCharm(game: Game, root: HTMLElement): void {
   const foeName = charm.enemies[0]?.name ?? "";
   const foeDefId = charm.enemies[0]?.defId ?? "";
 
+  const charmHpPct = Math.max(0, (charm.hp / charm.maxHp) * 100);
+  const charmHpCls = charmHpPct < 25 ? "low" : charmHpPct < 50 ? "warn" : "";
+  const charmApPips = Array.from({ length: charm.apMax }, (_, i) =>
+    `<span class="ap-pip ${i < charm.ap ? "filled" : ""}"></span>`
+  ).join("");
+
   root.innerHTML = `
     <h1>とろかし — ${escapeHtml(foeName)}</h1>
     <p class="flavor pink">${escapeHtml(tLine(db, `charm.${foeDefId}.start`))}</p>
     <div class="status"><span class="hint">${escapeHtml(tLine(db, "charm.hint"))}</span></div>
-    <div class="enemies">${enemiesHtml}</div>
+    <div class="charm-enemies">${enemiesHtml}</div>
     <div class="koyuki charm">
-      <div>こゆき　HP ${charm.hp}/${charm.maxHp}　AP ${charm.ap}/${charm.apMax}　守り 🛡${charm.guard}${sdef > 0 ? `(+${sdef})` : ""}</div>
-      <div class="enemy-hp">我慢 ${charm.gaman}/${charm.gamanMax}</div>
-      <div class="bar gaman koyuki-gaman"><span style="width:${gamanPct}%"></span></div>
-      <div class="sword">もう一本の刀　身${charm.sextech.mi} / 鎬${charm.sextech.shinogi} / 切先${charm.sextech.kissaki}　［威力+${power}］</div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:4px;">
+        <span><strong>こゆき</strong></span>
+        <span>HP <strong>${charm.hp}</strong>/${charm.maxHp}</span>
+        <span>AP <span class="ap-pips">${charmApPips}</span> ${charm.ap}/${charm.apMax}</span>
+        <span class="badge gold">🛡守り${charm.guard}${sdef > 0 ? `+${sdef}` : ""}</span>
+      </div>
+      <div class="bar hp" style="margin:4px 0 6px;"><span class="${charmHpCls}" style="width:${charmHpPct}%"></span></div>
+      <div class="enemy-hp">我慢 <strong>${charm.gaman}</strong>/${charm.gamanMax}</div>
+      <div class="bar gaman koyuki-gaman" style="height:8px;"><span style="width:${gamanPct}%"></span></div>
+      <div class="sword" style="margin-top:5px;">もう一本の刀　身${charm.sextech.mi}・鎬${charm.sextech.shinogi}・切先${charm.sextech.kissaki}　［威力+${power}］</div>
     </div>
     ${allocHtml}
+    <p class="hint" style="margin-bottom:6px;">性技（クリックで使用）</p>
     <div class="hand">${handHtml}</div>
     <div class="controls">
       <button id="todome" class="${todomeClass}" ${ready ? "" : "disabled"}>${escapeHtml(todomeText)}</button>
       <button id="endturn" ${charm.phase !== "player" ? "disabled" : ""}>ターン終了</button>
     </div>
-    <pre class="log">${escapeHtml(game.log.slice(-16).join("\n"))}</pre>
+    <pre class="log" id="charm-log">${escapeHtml(game.log.slice(-16).join("\n"))}</pre>
   `;
 
   root.querySelectorAll<HTMLButtonElement>(".card.sex").forEach((btn) => {
@@ -176,4 +190,7 @@ export function renderCharm(game: Game, root: HTMLElement): void {
   root.querySelector<HTMLButtonElement>("#auto")?.addEventListener("click", () => game.charmAuto());
   root.querySelector<HTMLButtonElement>("#todome")?.addEventListener("click", () => game.charmTodome());
   root.querySelector<HTMLButtonElement>("#endturn")?.addEventListener("click", () => game.charmEndTurn());
+
+  const charmLog = root.querySelector<HTMLPreElement>("#charm-log");
+  if (charmLog) charmLog.scrollTop = charmLog.scrollHeight;
 }
